@@ -1,0 +1,23 @@
+[package]
+name = "ordnung-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+entl-codebase.workspace = true
+entl-github.workspace = true
+globset.workspace = true
+ignore.workspace = true
+profile-inventory.workspace = true
+pulldown-cmark.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shell-words.workspace = true
+toml.workspace = true
+ureq.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

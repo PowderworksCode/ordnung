@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Run Cargo against local dependency checkouts without changing the committed lockfile.
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+ENTL_ROOT="$ROOT/../entl"
+LOCKFILE="$ROOT/Cargo.lock"
+
+if [[ ! -f "$ENTL_ROOT/crates/entl-codebase/Cargo.toml" ]] ||
+    [[ ! -f "$ENTL_ROOT/crates/entl-github/Cargo.toml" ]]; then
+    echo "expected sibling Entl checkout at $ENTL_ROOT" >&2
+    exit 1
+fi
+if [[ $# -eq 0 ]]; then
+    echo "usage: $0 CARGO_SUBCOMMAND [ARGS...]" >&2
+    exit 2
+fi
+
+cargo_subcommand=$1
+shift
+
+lockfile_existed=false
+lockfile_backup=$(mktemp "${TMPDIR:-/tmp}/ordnung-cargo-lock.XXXXXX")
+if [[ -f "$LOCKFILE" ]]; then
+    lockfile_existed=true
+    cp "$LOCKFILE" "$lockfile_backup"
+fi
+
+restore_lockfile() {
+    if [[ "$lockfile_existed" == true ]]; then
+        cp "$lockfile_backup" "$LOCKFILE"
+    else
+        rm -f "$LOCKFILE"
+    fi
+    rm -f "$lockfile_backup"
+}
+trap restore_lockfile EXIT
+
+cd "$ROOT"
+if [[ "$cargo_subcommand" == fmt ]]; then
+    cargo fmt "$@"
+    exit
+fi
+cargo "$cargo_subcommand" \
+    --config 'patch."https://github.com/PowderworksCode/entl".entl-codebase.path="../entl/crates/entl-codebase"' \
+    --config 'patch."https://github.com/PowderworksCode/entl".entl-github.path="../entl/crates/entl-github"' \
+    "$@"

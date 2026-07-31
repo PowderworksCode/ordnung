@@ -1,0 +1,27 @@
+[workspace]
+members = ["crates/ordnung-core", "crates/ordnung-cli"]
+resolver = "3"
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/PowderworksCode/ordnung"
+
+[workspace.dependencies]
+anyhow = "1.0.104"
+base64 = "0.22.1"
+clap = { version = "4.6.1", features = ["derive"] }
+entl-codebase = { git = "https://github.com/PowderworksCode/entl", rev = "e40d0116d09074a8e6e86af16cc4fc30ade936e6" }
+entl-github = { git = "https://github.com/PowderworksCode/entl", rev = "e40d0116d09074a8e6e86af16cc4fc30ade936e6" }
+globset = "0.4.19"
+ignore = "0.4.31"
+profile-inventory = { package = "inventory", version = "0.3.24" }
+pulldown-cmark = "0.13.4"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+shell-words = "1.1.1"
+tempfile = "3.27.0"
+toml = "1.1.2"
+ureq = "3.3.0"

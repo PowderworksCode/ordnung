@@ -1,0 +1,60 @@
+name: Ordnung
+description: Audit and remediate repository structure and fleet configuration.
+author: Powderworks
+
+branding:
+  icon: check-square
+  color: gray-dark
+
+inputs:
+  mode:
+    description: One of repo-check, check, fix, github-check, fleet-check, fleet-sync, or fleet-sync-all.
+    required: false
+    default: repo-check
+  path:
+    description: Repository path for local inspection.
+    required: false
+    default: .
+  fleet:
+    description: Path to fleet.toml for fleet modes.
+    required: false
+    default: ""
+  repository:
+    description: GitHub repository in owner/name form.
+    required: false
+    default: ${{ github.repository }}
+  apply:
+    description: Apply exact fixes or open/update the remediation pull request.
+    required: false
+    default: "false"
+  format:
+    description: Output format, either human or json.
+    required: false
+    default: human
+  github-token:
+    description: Token used by gh for GitHub-backed modes.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  outcome:
+    description: clean, drift, or error.
+    value: ${{ steps.ordnung.outputs.outcome }}
+  exit-code:
+    description: Ordnung process exit code.
+    value: ${{ steps.ordnung.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - id: ordnung
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        ORDNUNG_ACTION_MODE: ${{ inputs.mode }}
+        ORDNUNG_ACTION_PATH: ${{ inputs.path }}
+        ORDNUNG_ACTION_FLEET: ${{ inputs.fleet }}
+        ORDNUNG_ACTION_REPOSITORY: ${{ inputs.repository }}
+        ORDNUNG_ACTION_APPLY: ${{ inputs.apply }}
+        ORDNUNG_ACTION_FORMAT: ${{ inputs.format }}
+      run: '"${{ github.action_path }}/scripts/action.sh"'
