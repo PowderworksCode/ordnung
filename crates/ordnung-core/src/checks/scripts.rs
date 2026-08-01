@@ -8,7 +8,7 @@ use crate::check::{
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "scripts",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::RepositoryShape,
     instructions: "Keep detected shell scripts under the configured scripts.directory, except exact scripts.allow paths; provide the configured development script there and name its repository-relative path in the root README.",
     repository_runner: Some(run),

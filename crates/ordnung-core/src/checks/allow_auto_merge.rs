@@ -7,7 +7,7 @@ use crate::check::{
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "allow-auto-merge",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::GithubSafeguards,
     instructions: "Keep GitHub auto-merge equal to the effective github.allow_auto_merge policy; an unmanaged setting is left alone.",
     repository_runner: None,

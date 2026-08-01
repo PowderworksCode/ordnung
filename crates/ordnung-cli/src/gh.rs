@@ -114,16 +114,22 @@ impl<R: GhRunner> GhClient<R> {
     }
 
     pub fn fetch_repo_config(&self, facts: &GithubRepositoryFacts) -> Result<RepoConfig> {
+        let relative = format!(
+            "{}/{}",
+            ordnung_core::CONFIG_DIR,
+            ordnung_core::OVERRIDES_FILE
+        );
         let endpoint = format!(
-            "repos/{}/contents/ordnung.toml?ref={}",
+            "repos/{}/contents/{relative}?ref={}",
             facts.repository,
             encode_component(&facts.default_branch)
         );
         let Some(content) = self.api_optional(&endpoint, "application/vnd.github.raw+json")? else {
             return Ok(RepoConfig::default());
         };
-        let text = String::from_utf8(content).context("remote ordnung.toml is not UTF-8")?;
-        RepoConfig::parse(format!("github:{}/ordnung.toml", facts.repository), &text)
+        let text = String::from_utf8(content)
+            .with_context(|| format!("remote {relative} is not UTF-8"))?;
+        RepoConfig::parse(format!("github:{}/{relative}", facts.repository), &text)
             .map_err(Into::into)
     }
 

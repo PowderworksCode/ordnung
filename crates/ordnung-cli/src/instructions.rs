@@ -39,7 +39,7 @@ pub fn render(context: &InstructionContext<'_>) -> String {
     } else {
         writeln!(
             output,
-            "- Policy source: this repository's `ordnung.toml` and defaults."
+            "- Policy source: this repository's `.ordnung/overrides.toml` and defaults."
         )
         .unwrap();
     }
@@ -313,11 +313,9 @@ fn render_test_layout(output: &mut String, context: &InstructionContext<'_>) {
             .join(", ");
         writeln!(
             output,
-            "- {} tests: source roots `{roots}`; external tests under `{}`; inline scan {}; mirrored files {}.",
+            "- {} tests: source roots `{roots}`; external tests under `{}`.",
             profile.display_name,
-            layout.test_root.display(),
-            enabled(context.test_layout.scan_inline),
-            enabled(context.test_layout.require_mirror)
+            layout.test_root.display()
         )
         .unwrap();
     }
@@ -385,6 +383,7 @@ fn render_managed(output: &mut String, managed: &[&ManagedEntry]) {
             let state = match entry.state {
                 ManagedState::Present => "present",
                 ManagedState::Absent => "absent",
+                ManagedState::Unmanaged => "unmanaged",
             };
             let scope = match entry.relative_to {
                 RelativeTo::Repo => "at repository root".to_owned(),
@@ -410,8 +409,4 @@ fn severity_name(severity: Severity) -> &'static str {
         Severity::Recommended => "recommended",
         Severity::Off => "disabled",
     }
-}
-
-fn enabled(value: bool) -> &'static str {
-    if value { "enabled" } else { "disabled" }
 }

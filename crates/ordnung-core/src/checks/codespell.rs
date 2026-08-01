@@ -9,7 +9,7 @@ use crate::check::{
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "codespell",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::Documentation,
     instructions: "Run Codespell from a push or pull-request workflow using its command or registered GitHub Action.",
     repository_runner: Some(run),

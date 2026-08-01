@@ -1,0 +1,31 @@
+name = "paranoid"
+
+# Everything Ordnung knows how to check, on. This tier exists for repositories
+# that would rather argue with a check than miss something, and it is the only
+# shipped tier that mandates specific tools.
+#
+# It extends `recommended` instead of restating it, so this file is exactly the
+# difference between "stricter practices most teams would accept" and "no
+# exceptions".
+[[extends]]
+path = "../recommended"
+
+[policy.checks]
+# Specific linters. Adopting this tier means adopting these tools.
+vale = { severity = "required", allow_override = true }
+stylelint = { severity = "required", allow_override = true }
+
+# Ordnung's own conventions, which are not industry practice.
+field-guide = { severity = "required", allow_override = true }
+stray-files = { severity = "required", allow_override = false }
+
+# Presentation and metadata that most repositories legitimately skip.
+website = { severity = "required", allow_override = true }
+action-badge = { severity = "required", allow_override = true }
+
+# Tests live outside the files they cover, and every source file has a mirrored
+# test file. Rust's inline `#[cfg(test)]` convention takes the opposite position on
+# the first; this tier takes both deliberately, so that source files stay free of
+# test scaffolding and a test file is findable from its source path.
+test-inline = { severity = "required", allow_override = true }
+test-mirror = { severity = "required", allow_override = true }

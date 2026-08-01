@@ -10,7 +10,7 @@ const IDLE_DAYS: u64 = 30;
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "stale",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::MaintenanceAutomation,
     instructions: "Keep open pull requests active within 30 days, remove branches already merged into the default branch, and enable automatic branch deletion after merge.",
     repository_runner: None,

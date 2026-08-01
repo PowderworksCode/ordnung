@@ -8,11 +8,11 @@ use anyhow::{Context, Result, bail};
 use clap::{Args, Parser, Subcommand};
 use ordnung_core::fleet::RelativeTo;
 use ordnung_core::{
-    CheckStatus, FileChangeSource, FileOperation, FleetConfig, Inventory, InventoryOptions,
-    RemediationPlan, RepoConfig, Report, Severity, apply_file_changes, build_remediation_plan,
-    default_policy, inspect_repository, plan_github_settings, plan_managed_changes,
-    resolve_github_settings, resolve_policy, run_github_checks_with_settings,
-    run_repository_checks_with_repo_config,
+    CheckStatus, DependencyRequirement, FileChangeSource, FileOperation, FleetConfig, Inventory,
+    InventoryOptions, RemediationPlan, RepoConfig, Report, Severity, apply_file_changes,
+    build_remediation_plan, default_policy, inspect_repository, plan_github_settings,
+    plan_managed_changes, resolve_github_settings, resolve_policy, run_github_checks_with_settings,
+    run_repository_checks_with_repo_config, run_repository_checks_with_requirements,
 };
 use serde::Serialize;
 
@@ -505,7 +505,11 @@ fn fleet(command: FleetCommand) -> Result<ExitCode> {
                     .filter(|configured| *configured)
                     .count()
                 );
-                println!("managed entries: {}", config.managed.len());
+                println!("managed entries: {}", config.effective_managed().len());
+                println!(
+                    "dependency requirements: {}",
+                    config.effective_dependencies().len()
+                );
             }
             Ok(ExitCode::SUCCESS)
         }
@@ -741,7 +745,7 @@ fn github_sync_fleet(
             fleet.name
         );
     }
-    let outcome = sync_fleet_member(&GhClient::new(), &fleet, fleet_toml, repository, apply)?;
+    let outcome = sync_fleet_member(&GhClient::new(), &fleet, repository, apply)?;
     if json {
         print_json("fleet-github-sync", outcome.ok, &outcome)?;
     } else {
@@ -769,7 +773,7 @@ fn github_sync_fleet_all(fleet_toml: &Path, apply: bool, json: bool) -> Result<E
     let mut members = Vec::with_capacity(fleet.members.len());
     for member in &fleet.members {
         members.push(
-            match sync_fleet_member(&client, &fleet, fleet_toml, &member.repo, apply) {
+            match sync_fleet_member(&client, &fleet, &member.repo, apply) {
                 Ok(outcome) => FleetGithubSyncMemberOutcome {
                     repository: member.repo.clone(),
                     outcome: Some(outcome),
@@ -808,10 +812,25 @@ fn github_sync_fleet_all(fleet_toml: &Path, apply: bool, json: bool) -> Result<E
     })
 }
 
+/// Fleet requirements override same-named local ones, so a member cannot quietly
+/// drop a requirement the fleet imposes, but may add requirements of its own.
+fn fleet_requirements(local: &RepoConfig, fleet: &FleetConfig) -> Vec<DependencyRequirement> {
+    let mut merged = local.dependencies.clone();
+    for requirement in fleet.effective_dependencies() {
+        match merged
+            .iter()
+            .position(|candidate| candidate.name == requirement.name)
+        {
+            Some(index) => merged[index] = requirement.clone(),
+            None => merged.push(requirement.clone()),
+        }
+    }
+    merged
+}
+
 fn sync_fleet_member(
     client: &GhClient,
     fleet: &FleetConfig,
-    fleet_toml: &Path,
     repository: &str,
     apply: bool,
 ) -> Result<GithubSyncOutcome> {
@@ -836,24 +855,18 @@ fn sync_fleet_member(
             ignore: local.ignore.clone(),
         },
     )?;
-    let mut repository_report =
-        run_repository_checks_with_repo_config(&checkout, &inventory, &local);
+    let mut repository_report = run_repository_checks_with_requirements(
+        &checkout,
+        &inventory,
+        &local,
+        &fleet_requirements(&local, fleet),
+    );
     repository_report.apply_policy(&policy);
     let mut github_report = run_github_checks_with_settings(&facts, &settings);
     github_report.apply_policy(&policy);
 
-    let fleet_root = fleet_toml
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .canonicalize()
-        .with_context(|| format!("cannot resolve fleet root for {}", fleet_toml.display()))?;
-    let managed_changes = plan_managed_changes(
-        &fleet_root,
-        repository,
-        &checkout,
-        &inventory,
-        &fleet.managed,
-    )?;
+    let managed_changes =
+        plan_managed_changes(repository, &checkout, &inventory, fleet.effective_managed())?;
     let setting_changes = plan_github_settings(&facts, &settings);
     let plan = build_remediation_plan(
         facts.repository.clone(),
@@ -938,14 +951,14 @@ fn sync_fleet(
             ignore: local.ignore.clone(),
         },
     )?;
-    let fleet_root = fleet_toml
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .canonicalize()
-        .with_context(|| format!("cannot resolve fleet root for {}", fleet_toml.display()))?;
     let managed_changes =
-        plan_managed_changes(&fleet_root, repo, repo_root, &inventory, &config.managed)?;
-    let mut report = run_repository_checks_with_repo_config(repo_root, &inventory, &local);
+        plan_managed_changes(repo, repo_root, &inventory, config.effective_managed())?;
+    let mut report = run_repository_checks_with_requirements(
+        repo_root,
+        &inventory,
+        &local,
+        &fleet_requirements(&local, &config),
+    );
     report.apply_policy(&policy);
     let plan = build_remediation_plan(repo, &[report], &managed_changes, Vec::new())?;
 

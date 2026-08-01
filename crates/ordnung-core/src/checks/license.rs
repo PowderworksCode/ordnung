@@ -15,7 +15,7 @@ const CANDIDATES: [&str; 5] = [
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "license",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::Documentation,
     instructions: "Keep a root LICENSE, LICENSE.md, LICENSE.txt, COPYING, or UNLICENSE file; GitHub SPDX classification is useful but nonstandard license text is allowed.",
     repository_runner: Some(run_repository),

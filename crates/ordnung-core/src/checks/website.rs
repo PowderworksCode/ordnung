@@ -23,7 +23,7 @@ static HTTP: LazyLock<ureq::Agent> = LazyLock::new(|| {
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "website",
-    default_severity: Severity::Required,
+    default_severity: Severity::Off,
     category: CheckCategory::Documentation,
     instructions: "Keep the repository's GitHub homepage setting pointed at its reachable HTTP(S) website.",
     repository_runner: None,

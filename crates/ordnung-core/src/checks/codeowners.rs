@@ -7,7 +7,7 @@ use crate::check::{
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "codeowners",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::RepositoryShape,
     instructions: "Keep a valid CODEOWNERS file in .github/CODEOWNERS, CODEOWNERS, or docs/CODEOWNERS, in GitHub precedence order, with at least one rule that assigns an @account, @organization/team, or email owner.",
     repository_runner: Some(run),

@@ -7,14 +7,11 @@ use crate::check::{
     RepositoryCheckContext, Severity, registry, result,
 };
 
-const MIN_WORDS: usize = 150;
-const MAX_WORDS: usize = 1_500;
-
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "readme",
     default_severity: Severity::Required,
     category: CheckCategory::Documentation,
-    instructions: "Keep a root README with an H1 title in its first ten nonblank lines, between 150 and 1,500 words, install/getting-started, usage/docs, contributing, and license sections, and no broken repository-relative Markdown links.",
+    instructions: "Keep a root README that opens with an H1 title in its first ten nonblank lines.",
     repository_runner: Some(run),
     github_runner: None,
 };
@@ -48,63 +45,31 @@ fn run(
         }
     };
     let facts = inspect(&text);
-    let mut problems = Vec::new();
-    if !facts.has_early_title {
-        problems.push("no H1 title heading in the first 10 nonblank lines".to_owned());
-    }
-    if facts.words < MIN_WORDS {
-        problems.push(format!("under {MIN_WORDS} words ({})", facts.words));
-    }
-    if facts.words > MAX_WORDS {
-        problems.push(format!("over {MAX_WORDS} words ({})", facts.words));
-    }
-    if !facts.has_install {
-        problems.push("no install/getting-started section".to_owned());
-    }
-    if !facts.has_usage {
-        problems.push("no usage/docs section".to_owned());
-    }
-    if !facts.has_license {
-        problems.push("no License section heading".to_owned());
-    }
-    if !facts.has_contributing {
-        problems.push("no Contributing section heading".to_owned());
-    }
-    let broken = facts
-        .relative_links
-        .iter()
-        .filter(|target| !relative_target_exists(target, &context.inventory.files))
-        .take(5)
-        .cloned()
-        .collect::<Vec<_>>();
-    if !broken.is_empty() {
-        problems.push(format!("broken relative links: {}", broken.join(", ")));
-    }
-
-    results.push(result(
-        definition,
-        if problems.is_empty() {
-            CheckStatus::Pass
-        } else {
-            CheckStatus::Fail
-        },
-        path.clone(),
-        if problems.is_empty() {
-            format!("{} passes the README floor", path.display())
-        } else {
-            problems.join("; ")
-        },
-    ));
+    results.push(if facts.has_early_title {
+        result(
+            definition,
+            CheckStatus::Pass,
+            path.clone(),
+            format!("{} opens with an H1 title", path.display()),
+        )
+    } else {
+        result(
+            definition,
+            CheckStatus::Fail,
+            path.clone(),
+            "no H1 title heading in the first 10 nonblank lines",
+        )
+    });
 }
 
-struct ReadmeFacts {
-    words: usize,
-    has_early_title: bool,
-    has_install: bool,
-    has_usage: bool,
-    has_license: bool,
-    has_contributing: bool,
-    relative_links: Vec<String>,
+pub(super) struct ReadmeFacts {
+    pub(super) words: usize,
+    pub(super) has_early_title: bool,
+    pub(super) has_install: bool,
+    pub(super) has_usage: bool,
+    pub(super) has_license: bool,
+    pub(super) has_contributing: bool,
+    pub(super) relative_links: Vec<String>,
 }
 
 struct Heading {
@@ -113,7 +78,7 @@ struct Heading {
     text: String,
 }
 
-fn inspect(text: &str) -> ReadmeFacts {
+pub(super) fn inspect(text: &str) -> ReadmeFacts {
     let mut headings = Vec::new();
     let mut current_heading: Option<Heading> = None;
     let mut relative_links = Vec::new();
@@ -190,7 +155,7 @@ fn inspect(text: &str) -> ReadmeFacts {
     }
 }
 
-fn root_readme(files: &std::collections::BTreeSet<PathBuf>) -> Option<&PathBuf> {
+pub(super) fn root_readme(files: &std::collections::BTreeSet<PathBuf>) -> Option<&PathBuf> {
     files.iter().find(|path| {
         path.parent()
             .is_some_and(|parent| parent.as_os_str().is_empty())
@@ -236,7 +201,10 @@ fn is_repository_relative(target: &str) -> bool {
     })
 }
 
-fn relative_target_exists(target: &str, files: &std::collections::BTreeSet<PathBuf>) -> bool {
+pub(super) fn relative_target_exists(
+    target: &str,
+    files: &std::collections::BTreeSet<PathBuf>,
+) -> bool {
     let target = target.split(['#', '?']).next().unwrap_or_default().trim();
     if target.is_empty() {
         return true;

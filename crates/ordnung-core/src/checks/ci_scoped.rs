@@ -9,7 +9,7 @@ use crate::check::{
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "ci-scoped",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::CiSafety,
     instructions: "Gate heavy pull-request jobs with workflow path filters, a job condition, or a dependency on an output-producing fanout job.",
     repository_runner: Some(run),

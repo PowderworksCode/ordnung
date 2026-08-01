@@ -8,7 +8,7 @@ use crate::github::GithubValue;
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "dependabot-automerge",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::Dependencies,
     instructions: "When github.allow_auto_merge is explicitly enabled, use a Dependabot-only pull-request workflow that fetches update metadata, excludes major updates, and enables auto-merge behind required checks.",
     repository_runner: None,

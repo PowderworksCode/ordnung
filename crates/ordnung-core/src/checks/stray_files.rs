@@ -34,7 +34,7 @@ const CONVENTIONAL: [&str; 24] = [
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "stray-files",
-    default_severity: Severity::Required,
+    default_severity: Severity::Off,
     category: CheckCategory::RepositoryShape,
     instructions: "Keep root Markdown and text files conventional or explicitly listed in stray_files.allow; keep working notes under stray_files.notes.",
     repository_runner: Some(run),

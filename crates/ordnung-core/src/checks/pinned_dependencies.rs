@@ -1,20 +1,23 @@
 use std::path::PathBuf;
 
 use entl_codebase::{DependencyKind, DependencyPinStatus};
-use entl_github::ActionPinStatus;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
-const EXAMPLE_LIMIT: usize = 8;
+use super::examples;
 
+/// Exact package versions are a preference rather than a consensus: the committed
+/// lockfile already fixes what gets installed, and exact requirements work against
+/// automated dependency updates. Action pinning is the security-relevant half and
+/// lives in `pinned-actions`.
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
-    id: "pinned-versions",
-    default_severity: Severity::Required,
+    id: "pinned-dependencies",
+    default_severity: Severity::Recommended,
     category: CheckCategory::Dependencies,
-    instructions: "Use exact npm/Bun dependency versions and commit-SHA GitHub Action references; local dependencies are exempt, stable Action channels are allowed, and Cargo ranges remain advisory when Cargo.lock owns resolution.",
+    instructions: "Use exact npm/Bun dependency versions; local dependencies are exempt and Cargo ranges stay advisory because Cargo.lock owns resolution.",
     repository_runner: Some(run),
     github_runner: None,
 };
@@ -58,33 +61,13 @@ fn run(
             }
         }
     }
-    let mut channels = 0usize;
-    for reference in &context.inventory.github.action_references {
-        match reference.pin_status {
-            ActionPinStatus::Pinned => checked += 1,
-            ActionPinStatus::Channel => {
-                checked += 1;
-                channels += 1;
-            }
-            ActionPinStatus::Local => {}
-            ActionPinStatus::Floating => {
-                checked += 1;
-                violations.push(format!(
-                    "{}:{} {}@{}",
-                    reference.workflow.display(),
-                    reference.job,
-                    reference.action,
-                    reference.reference.as_deref().unwrap_or("<missing>")
-                ));
-            }
-        }
-    }
+
     if checked == 0 {
         results.push(result(
             definition,
             CheckStatus::Skip,
             PathBuf::new(),
-            "no pinnable dependency or GitHub Action references",
+            "no pinnable dependency references",
         ));
         return;
     }
@@ -103,11 +86,6 @@ fn run(
             examples(&advisory)
         ));
     }
-    if channels > 0 {
-        details.push(format!(
-            "{channels} allowed GitHub Action release channel(s)"
-        ));
-    }
     results.push(result(
         definition,
         if violations.is_empty() {
@@ -117,7 +95,7 @@ fn run(
         },
         PathBuf::new(),
         if details.is_empty() {
-            format!("all {checked} dependency and Action references are pinned")
+            format!("all {checked} dependency reference(s) are pinned")
         } else {
             details.join("; ")
         },
@@ -129,19 +107,5 @@ fn display_root(root: &std::path::Path) -> String {
         "/".to_owned()
     } else {
         root.display().to_string()
-    }
-}
-
-fn examples(values: &[String]) -> String {
-    let shown = values
-        .iter()
-        .take(EXAMPLE_LIMIT)
-        .cloned()
-        .collect::<Vec<_>>()
-        .join(", ");
-    if values.len() > EXAMPLE_LIMIT {
-        format!("{shown} (+{} more)", values.len() - EXAMPLE_LIMIT)
-    } else {
-        shown
     }
 }

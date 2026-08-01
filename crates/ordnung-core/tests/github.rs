@@ -2,6 +2,7 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::LazyLock;
 
+use ordnung_core::Severity;
 use ordnung_core::{
     CheckStatus, DependabotAutomergeWorkflowFacts, GithubActionPublicationFacts,
     GithubActionsPermissionsFacts, GithubBranchFacts, GithubBranchProtectionFacts,
@@ -339,10 +340,15 @@ fn unavailable_strict_policy_is_an_error() {
     let mut facts = facts();
     facts.branch.strict_status_checks = GithubValue::unavailable("HTTP 403");
     let report = run_github_checks(&facts);
-    assert!(!report.is_clean());
-    assert!(report.results.iter().any(|result| {
-        result.check == "strict-status-checks" && result.status == CheckStatus::Error
-    }));
+    // An unreadable setting is reported as an error rather than a silent pass. The
+    // check is advisory by default, so it does not by itself make a report unclean.
+    let result = report
+        .results
+        .iter()
+        .find(|result| result.check == "strict-status-checks")
+        .expect("strict-status-checks runs");
+    assert_eq!(result.status, CheckStatus::Error);
+    assert_eq!(result.severity, Severity::Recommended);
 }
 
 #[test]

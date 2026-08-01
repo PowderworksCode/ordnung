@@ -8,7 +8,7 @@ use crate::github::GithubValue;
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "action-badge",
-    default_severity: Severity::Required,
+    default_severity: Severity::Off,
     category: CheckCategory::Documentation,
     instructions: "For a public repository that publishes a root GitHub Action, link its exact Marketplace listing from the root README.",
     repository_runner: None,

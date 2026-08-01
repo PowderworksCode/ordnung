@@ -8,7 +8,7 @@ use crate::github::GithubValue;
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "strict-status-checks",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::GithubSafeguards,
     instructions: "Require status checks to run against the latest default-branch state.",
     repository_runner: None,

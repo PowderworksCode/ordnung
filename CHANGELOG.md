@@ -2,6 +2,55 @@
 
 Notable changes to Ordnung are recorded here, newest first.
 
+## 2026-08-01
+
+- Split `test-layout` into `test-inline`, which keeps tests out of source files,
+  and `test-mirror`, which requires a mirrored test file per source file. They were
+  previously two booleans on one check's repository-local configuration, which fleet
+  policy could not carry; as separate checks each is a severity a fleet distributes.
+  Both are off by default and both are required by the `paranoid` tier.
+- Removed `test_layout.scan_inline` and `test_layout.require_mirror`, which the
+  split supersedes. `test_layout.ignore` and the per-language roots are unchanged.
+
+- Rebalanced built-in check defaults toward an industry floor: 17 required, 21
+  recommended, 7 off, where 36 of 43 were previously required. Specific linter
+  mandates (Vale, Stylelint), Ordnung-specific conventions (`field-guide`,
+  `stray-files`), contested practices (`stale`, `strict-status-checks`,
+  `ruleset-bypass`), and context-dependent files (`license`, `changelog`,
+  `codeowners`) no longer fail a run by default.
+- Split `pinned-versions` into `pinned-actions`, which is required because a
+  mutable Action tag lets an upstream owner change what runs in CI, and
+  `pinned-dependencies`, which is advisory because the lockfile already fixes
+  resolution and exact requirements work against automated updates.
+- Split `readme` into `readme`, which requires a root README with an early H1,
+  and `readme-quality`, which judges length, sections, and relative links against
+  Ordnung's definition of a good README and is advisory by default.
+
+- Added the `required-dependencies` check and `[[dependency]]` policy. A fleet or
+  a repository can require packages for every project of a language or ecosystem,
+  so automated tooling can rely on those libraries being available. Requirements
+  inherit and override exactly like managed entries.
+- Moved every Ordnung configuration file into a `.ordnung` directory. A member
+  repository's `ordnung.toml` is now `.ordnung/overrides.toml`, and a fleet's
+  `fleet.toml` and `managed/` sources live in `.ordnung/`.
+- Added composable configuration: `[[extends]]` inherits a policy library by local
+  path or by pinned Git revision. Members are never inherited, so importing a
+  layer cannot enrol another fleet's repositories.
+- With `git`, `path` selects a directory inside the fetched repository, so one
+  repository can publish several policy tiers.
+- Added shipped policy tiers under `confs/`: `recommended` for stricter practices
+  that mandate no specific linter, and `paranoid` for everything on, including
+  specific tools and Ordnung's own conventions. `paranoid` extends `recommended`,
+  so each tier is the difference from the one below it. Both are consumed through
+  the same `[[extends]]` mechanism a third party would use.
+- Added downstream override semantics. Check severities and GitHub settings
+  merge with the importing configuration winning; managed entries merge by name.
+  `allow_override` continues to govern member repositories only.
+- Added the `unmanaged` managed state, which drops an inherited entry without
+  deleting files. `absent` remains an assertion that deletes.
+- Cross-layer destination collisions between differently named entries are
+  rejected, so name-keyed replacement is the single way to override an entry.
+
 ## 2026-07-31
 
 - Added typed, conflict-checked remediation plans that combine exact check fixes,

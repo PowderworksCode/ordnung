@@ -13,13 +13,13 @@ pub use check::{
     GithubCheckRunner, Report, RepositoryCheckContext, RepositoryCheckRunner, Severity,
     check_definition, check_definitions, check_ids, default_policy, run_github_checks,
     run_github_checks_with_settings, run_repository_checks, run_repository_checks_with_config,
-    run_repository_checks_with_repo_config,
+    run_repository_checks_with_repo_config, run_repository_checks_with_requirements,
 };
 pub use config::{
     BooleanSettingOverride, BooleanSettingPolicy, CheckPolicy, CiExistsConfig, CodegenConfig,
-    GithubSettings, GithubSettingsOverrides, GithubSettingsPolicy, LanguageTestLayout,
-    LocalOverride, RepoConfig, ScriptsConfig, StrayFilesConfig, TestLayoutConfig,
-    resolve_github_settings, resolve_policy,
+    DependencyRequirement, GithubSettings, GithubSettingsOverrides, GithubSettingsPolicy,
+    LanguageTestLayout, LocalOverride, RepoConfig, ScriptsConfig, StrayFilesConfig,
+    TestLayoutConfig, resolve_github_settings, resolve_policy,
 };
 pub use entl_codebase::{
     Artifact, ArtifactId, ArtifactProfile, LanguageConventions, TaskKind, TestLayoutDefaults,
@@ -27,7 +27,10 @@ pub use entl_codebase::{
 };
 pub use entl_github::{GithubInventory, TaskInvocation, Workflow, WorkflowCommand};
 pub use error::{Error, Result};
-pub use fleet::{ChangeKind, FleetConfig, ManagedChange, apply_changes, plan_managed_changes};
+pub use fleet::{
+    CONFIG_DIR, ChangeKind, Extends, FLEET_FILE, FleetConfig, ManagedChange, OVERRIDES_FILE,
+    POLICY_FILE, PolicyLibrary, ResolvedManaged, apply_changes, plan_managed_changes,
+};
 pub use github::{
     DependabotAutomergeWorkflowFacts, GithubActionPublicationFacts, GithubActionsPermissionsFacts,
     GithubBranchFacts, GithubBranchProtectionFacts, GithubDefaultWorkflowPermissions,

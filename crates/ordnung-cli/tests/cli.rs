@@ -203,7 +203,7 @@ case "$endpoint" in
   "repos/owner/repo/rulesets?targets=branch&per_page=100")
     printf '%s' '[]'
     ;;
-  "repos/owner/repo/contents/ordnung.toml?ref=main")
+  "repos/owner/repo/contents/.ordnung/overrides.toml?ref=main")
     printf '%s\n' 'gh: Not Found (HTTP 404)' >&2
     exit 1
     ;;

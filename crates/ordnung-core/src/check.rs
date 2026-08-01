@@ -5,8 +5,8 @@ use std::sync::LazyLock;
 use serde::{Deserialize, Serialize};
 
 use crate::config::{
-    CiExistsConfig, CodegenConfig, GithubSettings, RepoConfig, ScriptsConfig, StrayFilesConfig,
-    TestLayoutConfig,
+    CiExistsConfig, CodegenConfig, DependencyRequirement, GithubSettings, RepoConfig,
+    ScriptsConfig, StrayFilesConfig, TestLayoutConfig,
 };
 use crate::github::GithubRepositoryFacts;
 use crate::inventory::Inventory;
@@ -153,6 +153,8 @@ impl Report {
 pub struct RepositoryCheckContext<'a> {
     pub root: &'a Path,
     pub inventory: &'a Inventory,
+    /// Dependency requirements in force, already merged across policy layers.
+    pub dependencies: &'a [DependencyRequirement],
     pub ci_exists: &'a CiExistsConfig,
     pub codegen: &'a [CodegenConfig],
     pub scripts: &'a ScriptsConfig,
@@ -252,9 +254,21 @@ pub fn run_repository_checks_with_repo_config(
     inventory: &Inventory,
     config: &RepoConfig,
 ) -> Report {
+    run_repository_checks_with_requirements(root, inventory, config, &config.dependencies)
+}
+
+/// Runs repository checks with dependency requirements supplied separately, so a
+/// fleet's merged requirements can override what the repository declares locally.
+pub fn run_repository_checks_with_requirements(
+    root: &Path,
+    inventory: &Inventory,
+    config: &RepoConfig,
+    dependencies: &[DependencyRequirement],
+) -> Report {
     let context = RepositoryCheckContext {
         root,
         inventory,
+        dependencies,
         ci_exists: &config.ci_exists,
         codegen: &config.codegen,
         scripts: &config.scripts,

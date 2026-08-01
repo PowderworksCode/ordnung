@@ -12,7 +12,7 @@ You need the fleet configuration, the member's `OWNER/NAME`, and a local checkou
 ## Validate the fleet configuration
 
 ```sh
-ordnung fleet check ../fleet-configuration/fleet.toml
+ordnung fleet check ../conf/.ordnung/fleet.toml
 ```
 
 Resolve configuration errors before continuing.
@@ -20,7 +20,7 @@ Resolve configuration errors before continuing.
 ## Preview the synchronization plan
 
 ```sh
-ordnung fleet sync ../fleet-configuration/fleet.toml \
+ordnung fleet sync ../conf/.ordnung/fleet.toml \
   --repo PowderworksCode/ordnung \
   --repo-root .
 ```
@@ -33,7 +33,7 @@ continuing.
 Run the same command with the explicit mutation flag:
 
 ```sh
-ordnung fleet sync ../fleet-configuration/fleet.toml \
+ordnung fleet sync ../conf/.ordnung/fleet.toml \
   --repo PowderworksCode/ordnung \
   --repo-root . \
   --apply
@@ -49,7 +49,7 @@ command surface.
 To operate on the GitHub repository without a prepared member checkout, use:
 
 ```sh
-ordnung fleet github-sync ../fleet-configuration/fleet.toml \
+ordnung fleet github-sync ../conf/.ordnung/fleet.toml \
   --repo PowderworksCode/ordnung
 ```
 

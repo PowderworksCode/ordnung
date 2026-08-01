@@ -9,7 +9,7 @@ use crate::check::{
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "vale",
-    default_severity: Severity::Required,
+    default_severity: Severity::Off,
     category: CheckCategory::Documentation,
     instructions: "Keep a root .vale.ini with an existing relative StylesPath when declared, and run Vale from a push or pull-request workflow.",
     repository_runner: Some(run),

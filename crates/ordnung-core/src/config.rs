@@ -33,11 +33,15 @@ pub struct RepoConfig {
     pub stray_files: StrayFilesConfig,
     #[serde(default)]
     pub test_layout: TestLayoutConfig,
+    #[serde(default, rename = "dependency")]
+    pub dependencies: Vec<DependencyRequirement>,
 }
 
 impl RepoConfig {
     pub fn load_optional(repo_root: &Path) -> Result<Self> {
-        let path = repo_root.join("ordnung.toml");
+        let path = repo_root
+            .join(crate::fleet::CONFIG_DIR)
+            .join(crate::fleet::OVERRIDES_FILE);
         if !path.is_file() {
             return Ok(Self::default());
         }
@@ -56,6 +60,9 @@ impl RepoConfig {
         config.scripts.validate()?;
         config.stray_files.validate()?;
         config.test_layout.validate()?;
+        for requirement in &config.dependencies {
+            requirement.validate()?;
+        }
         Ok(config)
     }
 }
@@ -304,6 +311,108 @@ pub struct LocalOverride {
     pub reason: String,
 }
 
+/// Packages every matching package must declare as a dependency.
+///
+/// Selectors match a discovered package, which carries exactly one language and
+/// one ecosystem, so `require` names are unambiguous for a single registry.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DependencyRequirement {
+    pub name: String,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
+    pub ecosystem: Option<String>,
+    #[serde(default)]
+    pub require: Vec<String>,
+    /// Restricts which dependency kind satisfies the requirement. Any kind
+    /// satisfies it by default.
+    #[serde(default)]
+    pub kind: Option<entl_codebase::DependencyKind>,
+    #[serde(default)]
+    pub state: crate::fleet::ManagedState,
+}
+
+impl DependencyRequirement {
+    pub fn validate(&self) -> Result<()> {
+        use crate::fleet::ManagedState;
+        if self.name.trim().is_empty() {
+            return Err(Error::Config(
+                "dependency requirement name cannot be empty".into(),
+            ));
+        }
+        match self.state {
+            // Removing a dependency is never safe to infer: other code may use it.
+            ManagedState::Absent => {
+                return Err(Error::Config(format!(
+                    "dependency requirement {:?} cannot be absent; \
+                     Ordnung does not remove dependencies",
+                    self.name
+                )));
+            }
+            ManagedState::Unmanaged => return Ok(()),
+            ManagedState::Present => {}
+        }
+        if self.language.is_none() && self.ecosystem.is_none() {
+            return Err(Error::Config(format!(
+                "dependency requirement {:?} must select a language or an ecosystem",
+                self.name
+            )));
+        }
+        if let Some(language) = &self.language {
+            if language_profile(language).is_none() {
+                return Err(Error::Config(format!(
+                    "unknown language profile {language:?} in dependency requirement {:?}",
+                    self.name
+                )));
+            }
+        }
+        if let Some(ecosystem) = &self.ecosystem {
+            if crate::profile::ecosystem_profile(ecosystem).is_none() {
+                return Err(Error::Config(format!(
+                    "unknown ecosystem profile {ecosystem:?} in dependency requirement {:?}",
+                    self.name
+                )));
+            }
+        }
+        if self.require.is_empty() {
+            return Err(Error::Config(format!(
+                "dependency requirement {:?} lists no packages to require",
+                self.name
+            )));
+        }
+        if self.require.iter().any(|package| package.trim().is_empty()) {
+            return Err(Error::Config(format!(
+                "dependency requirement {:?} contains an empty package name",
+                self.name
+            )));
+        }
+        Ok(())
+    }
+
+    /// Whether this requirement applies to a discovered package.
+    ///
+    /// A package's own language comes from its manifest, so a Node or Bun package
+    /// reports `javascript` even when the project it belongs to is TypeScript.
+    /// Both are accepted, otherwise `language = "typescript"` would silently match
+    /// nothing.
+    pub fn matches<'a>(
+        &self,
+        languages: impl IntoIterator<Item = &'a str>,
+        ecosystem: &str,
+    ) -> bool {
+        let language_matches = match self.language.as_deref() {
+            None => true,
+            Some(selector) => languages.into_iter().any(|language| language == selector),
+        };
+        language_matches
+            && self
+                .ecosystem
+                .as_deref()
+                .is_none_or(|selector| selector == ecosystem)
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GithubSettings {
@@ -362,8 +471,6 @@ pub struct BooleanSettingOverride {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct TestLayoutConfig {
-    pub scan_inline: bool,
-    pub require_mirror: bool,
     pub ignore: Vec<String>,
     #[serde(flatten)]
     pub languages: BTreeMap<String, LanguageTestLayout>,
@@ -372,8 +479,6 @@ pub struct TestLayoutConfig {
 impl Default for TestLayoutConfig {
     fn default() -> Self {
         Self {
-            scan_inline: true,
-            require_mirror: true,
             ignore: Vec::new(),
             languages: language_profiles()
                 .iter()

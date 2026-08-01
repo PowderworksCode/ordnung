@@ -72,18 +72,91 @@ changing the inventory, policy, finding, or change-plan contracts.
 ### Standalone
 
 `ordnung inspect` and `ordnung check` operate on one local repository. An
-optional `ordnung.toml` is authoritative because no fleet policy is present.
+optional `.ordnung/overrides.toml` is authoritative because no fleet policy is present.
 This includes monorepositories: every detected project receives its applicable
 checks.
 
 ### Fleet
 
-A central `fleet.toml` names every repository. The fleet runner obtains each
-member's tree and GitHub facts, audits it, resolves allowed local overrides,
+A central `.ordnung/fleet.toml` names every repository. The fleet runner obtains
+each member's tree and GitHub facts, audits it, resolves allowed local overrides,
 and computes one complete remediation plan.
 
-The fleet configuration repository contains policy and canonical files. It is
-one consumer of Ordnung, not configuration built into the tool.
+A fleet configuration repository contains policy and canonical files. It is one
+consumer of Ordnung, not configuration built into the tool. Ordnung ships policy
+tiers under `confs/`, but they are consumed through the same inheritance
+mechanism any third-party configuration uses, so no tier is privileged.
+
+## Configuration Layout
+
+Every Ordnung configuration file for a repository lives in a `.ordnung`
+directory, which holds up to three distinct roles:
+
+| File | Role |
+| --- | --- |
+| `fleet.toml` | A fleet instance: members plus the policy applied to them. |
+| `policy.toml` | A reusable policy library. Declares no members. |
+| `overrides.toml` | A member repository's local exceptions. |
+
+Managed sources live under `.ordnung/managed/` and resolve against the directory
+that declares them. The directory is therefore the unit of publication: an
+inherited layer is fetched whole and is self-contained, so resolution needs no
+separate repository-root concept.
+
+A configuration repository that is also a member of its own fleet holds
+`fleet.toml` and `overrides.toml` side by side without collision.
+
+## Policy Layers
+
+A fleet instance or a policy library may inherit other layers:
+
+```toml
+[[extends]]
+path = "../../other-conf/.ordnung"
+```
+
+```toml
+[[extends]]
+git = "https://github.com/owner/repo"
+rev = "0000000000000000000000000000000000000000"
+path = "confs/recommended"
+```
+
+With `git`, `path` selects a directory inside the fetched repository, so one
+repository can publish several tiers. Without it, the repository's own `.ordnung`
+directory is used. A fetched revision is cached by URL and revision; because the
+revision is pinned the cache is immutable and reused without network access.
+
+Git references must name a full 40-character commit revision. A moving reference
+cannot produce a deterministic plan, and an inherited layer can write files into
+every member repository, so the pin is the reviewable boundary of that trust.
+
+`extends` resolves depth first, so a layer always appears after everything it
+inherits and the layer nearest the fleet wins. Cycles are rejected.
+
+**Members are never inherited.** `extends` must reference a `policy.toml`;
+pointing it at a directory containing `fleet.toml` is an error. Inheriting members
+would silently enrol another fleet's repositories.
+
+Merge semantics:
+
+- Check severities merge per check ID, and GitHub settings per field, with the
+  importing layer winning.
+- Managed entries and dependency requirements merge by `name`. Reusing a name
+  replaces the inherited entry; that is the only way to override one.
+- `allow_override` governs member repositories only. A layer that extends another
+  may redefine anything it inherits, because importing was a choice it can unmake.
+
+### Shipped Tiers
+
+| Tier | Intent |
+| --- | --- |
+| built-in defaults | The floor. Close to industry consensus, so a repository with no configuration gets actionable output. |
+| `confs/recommended` | Stricter practices most teams would accept. Mandates no specific linter. |
+| `confs/paranoid` | Every check on, including specific tools and Ordnung's own conventions. Extends `recommended`. |
+
+Each tier extends the one below it, so a tier file is the difference between
+tiers rather than a restatement of the whole check list.
 
 ## Repository Inventory
 
@@ -110,7 +183,7 @@ dependency, vendored, and generated trees, and never follows symlinks. Ordnung
 filters hidden package and project roots from its policy inventory. Repository
 `.gitignore` files participate even outside a Git checkout. Additional
 repository-relative gitignore-style exclusions may be declared in
-`ordnung.toml`.
+`.ordnung/overrides.toml`.
 
 The reusable discovery API returns an Entl `CodebaseInventory`; it does not
 depend on Ordnung configuration or repository policy facts. `entl-github`
@@ -215,7 +288,22 @@ GitHub execution, and agent instruction rendering all consume this registry.
 
 `skip` always explains why a check does not apply. `error` means the check could
 not reach a trustworthy verdict. Required failures and errors produce a nonzero
-CLI exit code.
+CLI exit code. Demoting a check therefore also demotes its errors: an unreadable
+GitHub setting on an advisory check does not by itself make a report unclean.
+
+A check's `default_severity` is the position Ordnung takes with no configuration
+at all, so it is reserved for what is close to industry consensus and actionable.
+A specific tool mandate, an Ordnung-invented convention, a contested practice, or
+a claim that depends on context the repository cannot express belongs in a shipped
+tier instead. A default that fires on a legitimate choice teaches its reader to
+ignore output.
+
+Where one check would otherwise bundle a consensus rule with a preference, it is
+split so each half carries its own severity: `pinned-actions` and
+`pinned-dependencies`, `readme` and `readme-quality`, `test-inline` and
+`test-mirror`. Splitting also makes each position expressible in fleet policy,
+because a severity travels through policy layers while a boolean on a
+repository-local config does not.
 
 Checks read either repository inventory, parsed repository files, GitHub facts,
 or a declared combination. GitHub access and filesystem access are supplied as
@@ -242,7 +330,7 @@ requires both the fleet manifest and explicit member name:
 
 ```sh
 ordnung instructions . \
-  --fleet ../fleet-configuration/fleet.toml \
+  --fleet ../conf/.ordnung/fleet.toml \
   --repo PowderworksCode/ordnung \
   --write AGENTS.md --write CLAUDE.md
 ```
@@ -297,16 +385,55 @@ Git, local-path, and workspace sources. Each ecosystem profile explicitly owns
 its pin syntax and whether floating requirements are blocking or advisory.
 Ordnung does not reparse manifests or maintain ecosystem-name conditionals.
 
-`pinned-versions` requires exact three-component semver declarations for npm,
-Bun, pnpm, and Yarn dependencies. Local and workspace dependencies are exempt,
-and peer dependency compatibility ranges are not graded. Cargo registry ranges
-and unpinned Git sources are reported as advisory because `Cargo.lock` owns the
-resolved build; an `=` requirement or 40-character Git revision is pinned.
+Two separate claims live here, so they are two checks.
 
-`entl-github` separately emits every workflow Action reference with its pin
-classification. Local and Docker actions are exempt, 40-character commit SHAs
-are pinned, and the explicit `stable` and `oldstable` channels are allowed. All
-other tags, branches, and missing references fail.
+`pinned-actions` is required by default. `entl-github` emits every workflow Action
+reference with its pin classification. Local and Docker actions are exempt,
+40-character commit SHAs are pinned, and the explicit `stable` and `oldstable`
+channels are allowed. All other tags, branches, and missing references fail. A
+mutable tag lets an upstream owner change what runs in this repository's CI, which
+makes this a supply-chain boundary rather than a preference.
+
+`pinned-dependencies` is advisory by default. It requires exact three-component
+semver declarations for npm, Bun, pnpm, and Yarn dependencies. Local and workspace
+dependencies are exempt, and peer dependency compatibility ranges are not graded.
+Cargo registry ranges and unpinned Git sources are reported as advisory because
+`Cargo.lock` owns the resolved build; an `=` requirement or 40-character Git
+revision is pinned. The committed lockfile already fixes what gets installed, and
+exact requirements work against automated dependency updates, so this is a
+position a fleet takes rather than a default.
+
+## Required Dependencies
+
+A policy layer may require packages of every project in a language or ecosystem,
+so tooling that reasons about installed libraries can rely on them existing:
+
+```toml
+[[dependency]]
+name = "rust-refactoring"
+language = "rust"
+require = ["itertools"]
+```
+
+Package names belong to one registry, so an entry must select a language, an
+ecosystem, or both. `kind` restricts which dependency kind satisfies the
+requirement; any kind satisfies it by default. Entries merge by `name` and accept
+`state = "unmanaged"`, exactly like managed entries. `state = "absent"` is rejected:
+removing a dependency is never safe to infer, because other code may use it.
+
+Selectors match a discovered package, which carries exactly one language and one
+ecosystem. A package's own language comes from its manifest, so a Node or Bun
+package reports `javascript` even when the project around it is TypeScript. Both
+its manifest language and the languages of the project rooted at the same path are
+accepted, otherwise `language = "typescript"` would silently match nothing.
+
+A workspace root is a synthesized aggregation entry with no manifest dependencies
+of its own and is skipped. Workspace members resolve their own inherited
+declarations, so nothing is borrowed from the root.
+
+`required-dependencies` reports what is missing and never edits a manifest. Adding
+a dependency means choosing a version and updating a lockfile, which cannot be
+resolved deterministically without network access.
 
 ## Workflow Token Permissions
 
@@ -419,7 +546,7 @@ allow = ["install.sh"]
 ```
 
 The directory, development entry, allowlist, and ignored directory names are
-validated when `ordnung.toml` is loaded. Custom development entries still have
+validated when `.ordnung/overrides.toml` is loaded. Custom development entries still have
 to classify as Shell.
 
 ## Conventional Commits
@@ -440,12 +567,19 @@ enforcement point establishes the convention for future merges.
 
 ## README Floor
 
-The `readme` check selects a root file whose stem is `README`, using inventory
-path order to make selection deterministic. It requires an H1 title within the
-first ten nonblank lines, between 150 and 1,500 whitespace-delimited words, and
-headings for installation or setup, usage or documentation, contributing, and
-license information. This is a documentation-size guardrail, not an assessment
-of prose style.
+Both checks select a root file whose stem is `README`, using inventory path order
+to make selection deterministic.
+
+`readme` is required by default and is the floor: the file exists and carries an
+H1 title within the first ten nonblank lines.
+
+`readme-quality` is advisory by default and applies Ordnung's definition of a good
+README: between 150 and 1,500 whitespace-delimited words, headings for installation
+or setup, usage or documentation, contributing, and license information, and no
+broken repository-relative links. This is a documentation-size guardrail, not an
+assessment of prose style, and the length band and expected sections are a house
+style rather than a universal one. It skips when no README exists, because absence
+is the floor check's finding and reporting it twice adds no signal.
 
 Ordnung parses the document as GitHub-flavored Markdown and derives headings,
 links, and images from parser events. Repository-relative destinations are
@@ -526,6 +660,7 @@ required for the `v0.1.0` release.
 
 ### Foundation Phase
 
+- `project-inventory`
 - `branch-protection`
 - `required-checks`
 - `strict-status-checks`
@@ -559,9 +694,13 @@ required for the `v0.1.0` release.
 - `auto-update-pr-branches`
 - `ruleset-bypass`
 - `ci-scoped`
-- `pinned-versions`
+- `pinned-actions`
+- `pinned-dependencies` (advisory by default)
 - `test-retry-masking`
-- `test-layout` (optional; off by default)
+- `test-inline` (off by default)
+- `test-mirror` (off by default)
+- `required-dependencies`
+- `readme-quality` (advisory by default)
 - `stray-files`
 - `stylelint`
 - `vale`
@@ -575,7 +714,7 @@ required for the `v0.1.0` release.
 
 ### Standalone Configuration
 
-At repository root, `ordnung.toml` may define ignores and complete check policy:
+A repository's `.ordnung/overrides.toml` may define ignores and complete check policy:
 
 ```toml
 ignore = ["experiments/**"]
@@ -593,10 +732,13 @@ still graded when any non-exempt project uses it.
 
 ### Fleet Configuration
 
-The fleet manifest uses an explicit repository list:
+The fleet manifest uses an explicit repository list, and may inherit policy layers:
 
 ```toml
 name = "powderworks"
+
+[[extends]]
+path = "../../ordnung/confs/paranoid"
 
 [[member]]
 repo = "owner/project"
@@ -648,15 +790,17 @@ reason = "dependency updates may merge after required checks pass"
 Fleet members cannot set `[github]` directly, and standalone repositories cannot
 use `[github_overrides]`.
 
-The optional external-test layout check is enabled through normal check policy:
+The optional external-test layout checks are enabled through normal check policy.
+They are two independent positions, so each carries its own severity:
 
 ```toml
-[checks.test-layout]
+[checks.test-inline]
+severity = "required"
+
+[checks.test-mirror]
 severity = "required"
 
 [test_layout]
-scan_inline = true
-require_mirror = true
 ignore = ["src/generated/**"]
 
 [test_layout.rust]
@@ -670,13 +814,22 @@ test_root = "tests"
 test_suffixes = [".test", ".spec"]
 ```
 
-For each detected project, the check flags language-specific inline-test
-indicators in configured source roots and requires a corresponding file under
-the configured test root. The relative directory is preserved and a configured
-suffix is inserted before the test file extension.
+`test-inline` flags language-specific inline-test indicators in configured source
+roots. Rust's inline `#[cfg(test)]` module is idiomatic, so requiring its absence
+is a position rather than a consensus, and the check is off by default.
+
+`test-mirror` requires a corresponding file under the configured test root. The
+relative directory is preserved and a configured suffix is inserted before the
+test file extension. One test file per source file is a considerably stronger claim
+than keeping tests out of source files: it fires on entry points, module roots, and
+files already covered by a shared suite. It is off by default for that reason.
+
+Both share layout resolution, path validation, source collection, and `ignore`
+filtering; only the verdict differs.
 
 Unknown keys, unknown checks, malformed repository names, duplicate managed
-ownership, and unsafe paths are errors rather than ignored input.
+ownership, unresolvable inherited layers, unpinned Git references, `extends` cycles,
+and unsafe paths are errors rather than ignored input.
 
 ## Managed Configuration
 
@@ -724,6 +877,28 @@ relative_to = "repo"
 ```
 
 Tombstones remain until the fleet no longer needs the absence enforced.
+
+`state` has three values, and the distinction between the last two matters:
+
+| State | Meaning |
+| --- | --- |
+| `present` | The destination must hold exactly the source content. |
+| `absent` | The destination must not exist, and is deleted from every member. |
+| `unmanaged` | Stop inheriting this entry. No member file is touched. |
+
+`absent` is an assertion that deletes; `unmanaged` only drops an inherited
+declaration. Opting out of an upstream entry must not silently delete files across
+a fleet, which is why they cannot share one keyword. Declaring `unmanaged` for a
+name nothing inherited is an error, so a typo cannot quietly do nothing.
+
+Ownership is exclusive: exactly one entry owns a destination, which the planner
+relies on. Within a layer, overlapping destinations are an error. Across layers,
+reusing an entry's `name` replaces it, and that is the only sanctioned override.
+Two differently named entries that resolve to the same destination remain an error
+even from different layers, because a silent cross-layer collision would mean
+editing a file in one configuration and receiving content from a repository the
+author never opened. Managed entry names are consequently the public interface of
+a published configuration, and renaming one is a breaking change for importers.
 
 Managed entries may target all members or an explicit member subset. Project
 selectors are evaluated from inventory, not duplicated path lists.
@@ -818,7 +993,8 @@ The core is exercised with filesystem fixtures and fake GitHub fact providers.
 Required coverage includes nested Cargo workspaces, mixed Rust/TypeScript
 repositories, static sites below the root, ignored/generated trees, override
 authorization, project-relative managed files, directory mirror deletion,
-tombstones, idempotent plans, and unsafe-path rejection.
+tombstones, idempotent plans, unsafe-path rejection, multi-level policy
+inheritance, and fetching a pinned layer from a real Git repository.
 
 Integration tests exercise the CLI against temporary repositories. GitHub tests
 use a dedicated installation and disposable repositories; unit tests never need
@@ -829,7 +1005,8 @@ network access.
 - Both check-roadmap phases are implemented and tested.
 - Rust, TypeScript/JavaScript, and static-site inventories are trustworthy in
   nested repositories.
-- Standalone and fleet policy resolution is complete.
+- Standalone and fleet policy resolution is complete, including inherited policy
+  layers, the shipped tiers, and their merge and override semantics.
 - Exact file, directory mirror, project-relative, and tombstone synchronization
   is complete.
 - All file fixes produce one idempotent pull request per member.

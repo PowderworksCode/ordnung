@@ -4,10 +4,22 @@ use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::{CheckPolicy, GithubSettingsPolicy};
+use crate::config::{CheckPolicy, DependencyRequirement, GithubSettingsPolicy};
 use crate::error::{Error, Result};
 use crate::inventory::{Inventory, Project, ProjectCapability};
 use crate::profile::{EcosystemId, LanguageId, ecosystem_profile, language_profile};
+
+/// The directory that holds every Ordnung configuration file for a repository.
+///
+/// The directory is the unit of publication: an imported layer is fetched whole,
+/// so managed sources resolve against it without a separate repository-root concept.
+pub const CONFIG_DIR: &str = ".ordnung";
+/// A fleet instance: members plus the policy applied to them.
+pub const FLEET_FILE: &str = "fleet.toml";
+/// A reusable policy library. Declares no members and is never synced directly.
+pub const POLICY_FILE: &str = "policy.toml";
+/// A member repository's local exceptions.
+pub const OVERRIDES_FILE: &str = "overrides.toml";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -16,21 +28,154 @@ pub struct FleetConfig {
     #[serde(default, rename = "member")]
     pub members: Vec<FleetMember>,
     #[serde(default)]
+    pub extends: Vec<Extends>,
+    #[serde(default)]
     pub policy: FleetPolicy,
     #[serde(default, rename = "managed")]
     pub managed: Vec<ManagedEntry>,
+    #[serde(default, rename = "dependency")]
+    pub dependencies: Vec<DependencyRequirement>,
+    /// Dependency requirements after inherited layers are merged in.
+    #[serde(skip)]
+    resolved_dependencies: Vec<DependencyRequirement>,
+    /// Managed entries after inherited layers are merged in, each paired with the
+    /// layer root that owns its source. Derived at load; never part of the file.
+    #[serde(skip)]
+    resolved_managed: Vec<ResolvedManaged>,
+}
+
+/// A reusable policy layer. Has no members, so importing one can never drag
+/// another fleet's repositories along.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PolicyLibrary {
+    pub name: String,
+    #[serde(default)]
+    pub extends: Vec<Extends>,
+    #[serde(default)]
+    pub policy: FleetPolicy,
+    #[serde(default, rename = "managed")]
+    pub managed: Vec<ManagedEntry>,
+    #[serde(default, rename = "dependency")]
+    pub dependencies: Vec<DependencyRequirement>,
+}
+
+/// A reference to an inherited policy layer.
+///
+/// Git references pin a full commit revision: a plan that changes because an
+/// upstream branch moved would not be deterministic, and an imported layer can
+/// write files into every member repository.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Extends {
+    #[serde(default)]
+    pub path: Option<PathBuf>,
+    #[serde(default)]
+    pub git: Option<String>,
+    #[serde(default)]
+    pub rev: Option<String>,
+}
+
+impl Extends {
+    fn validate(&self) -> Result<()> {
+        match (&self.path, &self.git) {
+            // With git, path selects a directory inside the fetched repository, so
+            // one repository can publish more than one policy tier.
+            (Some(subpath), Some(_)) => {
+                validate_relative(subpath, "extends path within a repository")?;
+                self.validate_git()
+            }
+            (None, None) => Err(Error::Config(
+                "extends entry must declare either path or git".into(),
+            )),
+            (Some(path), None) => {
+                if self.rev.is_some() {
+                    return Err(Error::Config(
+                        "extends entry with path cannot declare rev".into(),
+                    ));
+                }
+                // Unlike a managed source, an extends path deliberately names a
+                // location outside this configuration directory, so parent
+                // components and absolute paths are both legitimate.
+                if path.as_os_str().is_empty() {
+                    return Err(Error::Config("extends path cannot be empty".into()));
+                }
+                Ok(())
+            }
+            (None, Some(_)) => self.validate_git(),
+        }
+    }
+
+    fn validate_git(&self) -> Result<()> {
+        let url = self.git.as_deref().expect("git is present");
+        if url.trim().is_empty() {
+            return Err(Error::Config("extends git url cannot be empty".into()));
+        }
+        let Some(rev) = &self.rev else {
+            return Err(Error::Config(format!(
+                "extends entry for {url:?} requires rev; \
+                 a moving reference cannot produce a deterministic plan"
+            )));
+        };
+        if rev.len() != 40 || !rev.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(Error::Config(format!(
+                "extends rev {rev:?} must be a full 40-character commit revision"
+            )));
+        }
+        Ok(())
+    }
+}
+
+/// A managed entry paired with the layer root that owns its source content.
+#[derive(Debug, Clone)]
+pub struct ResolvedManaged {
+    pub root: PathBuf,
+    pub entry: ManagedEntry,
+}
+
+/// One configuration layer contributing policy and managed entries.
+struct Layer {
+    root: PathBuf,
+    policy: FleetPolicy,
+    managed: Vec<ManagedEntry>,
+    dependencies: Vec<DependencyRequirement>,
 }
 
 impl FleetConfig {
     pub fn load(path: &Path) -> Result<Self> {
         let text = fs::read_to_string(path).map_err(|source| Error::io(path, source))?;
-        let config: Self = toml::from_str(&text).map_err(|error| Error::Parse {
+        let mut config: Self = toml::from_str(&text).map_err(|error| Error::Parse {
             path: path.to_path_buf(),
             message: error.to_string(),
         })?;
         let root = path.parent().unwrap_or_else(|| Path::new("."));
         config.validate(root)?;
+
+        let mut layers = Vec::new();
+        let mut visiting = Vec::new();
+        resolve_extends(root, &config.extends, &mut layers, &mut visiting)?;
+        layers.push(Layer {
+            root: root.to_path_buf(),
+            policy: config.policy.clone(),
+            managed: config.managed.clone(),
+            dependencies: config.dependencies.clone(),
+        });
+
+        config.policy = merge_policy(&layers);
+        config.resolved_managed = merge_managed(&layers)?;
+        config.resolved_dependencies = merge_dependencies(&layers)?;
+        config.validate_resolved()?;
         Ok(config)
+    }
+
+    /// Managed entries after inheritance, each paired with its owning layer root.
+    pub fn effective_managed(&self) -> &[ResolvedManaged] {
+        &self.resolved_managed
+    }
+
+    /// Dependency requirements after inheritance.
+    pub fn effective_dependencies(&self) -> &[DependencyRequirement] {
+        &self.resolved_dependencies
     }
 
     pub fn validate(&self, fleet_root: &Path) -> Result<()> {
@@ -53,20 +198,22 @@ impl FleetConfig {
                 )));
             }
         }
+        for extends in &self.extends {
+            extends.validate()?;
+        }
+        for requirement in &self.dependencies {
+            requirement.validate()?;
+        }
+        validate_layer_managed(&self.managed, fleet_root)
+    }
 
-        let mut names = BTreeSet::new();
-        let mut ownership: Vec<&ManagedEntry> = Vec::new();
-        for managed in &self.managed {
-            if managed.name.trim().is_empty() {
-                return Err(Error::Config("managed entry name cannot be empty".into()));
-            }
-            if !names.insert(&managed.name) {
-                return Err(Error::Config(format!(
-                    "duplicate managed entry {:?}",
-                    managed.name
-                )));
-            }
-            validate_relative(&managed.destination, "managed destination")?;
+    /// Checks that can only run once inheritance is merged: repository targets
+    /// must name members, and each destination must have exactly one owner.
+    fn validate_resolved(&self) -> Result<()> {
+        let repos: BTreeSet<&String> = self.members.iter().map(|member| &member.repo).collect();
+        let mut ownership: Vec<&ResolvedManaged> = Vec::new();
+        for resolved in &self.resolved_managed {
+            let managed = &resolved.entry;
             for repo in &managed.only {
                 validate_repo_name(repo)?;
                 if !repos.contains(repo) {
@@ -83,6 +230,74 @@ impl FleetConfig {
                     managed.name
                 )));
             }
+            if let Some(existing) = ownership
+                .iter()
+                .find(|other| managed_entries_overlap(&other.entry, managed))
+            {
+                return Err(Error::Config(format!(
+                    "managed destination {} is already owned by entry {:?} from {}; \
+                     reuse that name to override it, or set state = \"unmanaged\" to drop it",
+                    managed.destination.display(),
+                    existing.entry.name,
+                    existing.root.display()
+                )));
+            }
+            ownership.push(resolved);
+        }
+        Ok(())
+    }
+}
+
+impl PolicyLibrary {
+    pub fn load(path: &Path) -> Result<Self> {
+        let text = fs::read_to_string(path).map_err(|source| Error::io(path, source))?;
+        let config: Self = toml::from_str(&text).map_err(|error| Error::Parse {
+            path: path.to_path_buf(),
+            message: error.to_string(),
+        })?;
+        let root = path.parent().unwrap_or_else(|| Path::new("."));
+        config.validate(root)?;
+        Ok(config)
+    }
+
+    pub fn validate(&self, root: &Path) -> Result<()> {
+        if self.name.trim().is_empty() {
+            return Err(Error::Config("policy name cannot be empty".into()));
+        }
+        for extends in &self.extends {
+            extends.validate()?;
+        }
+        for requirement in &self.dependencies {
+            requirement.validate()?;
+        }
+        for managed in &self.managed {
+            if !managed.only.is_empty() {
+                return Err(Error::Config(format!(
+                    "managed entry {:?} declares only, which names member repositories; \
+                     a policy library has no members",
+                    managed.name
+                )));
+            }
+        }
+        validate_layer_managed(&self.managed, root)
+    }
+}
+
+/// Validation that applies to a single layer's own declarations, before merging.
+fn validate_layer_managed(entries: &[ManagedEntry], root: &Path) -> Result<()> {
+    let mut names = BTreeSet::new();
+    for managed in entries {
+        {
+            if managed.name.trim().is_empty() {
+                return Err(Error::Config("managed entry name cannot be empty".into()));
+            }
+            if !names.insert(&managed.name) {
+                return Err(Error::Config(format!(
+                    "duplicate managed entry {:?}",
+                    managed.name
+                )));
+            }
+            validate_relative(&managed.destination, "managed destination")?;
             if managed.relative_to == RelativeTo::Project && managed.when.is_none() {
                 return Err(Error::Config(format!(
                     "project-relative managed entry {:?} requires a project selector",
@@ -101,7 +316,7 @@ impl FleetConfig {
                         )));
                     };
                     validate_relative(source, "managed source")?;
-                    let source_path = fleet_root.join(source);
+                    let source_path = root.join(source);
                     let metadata = fs::symlink_metadata(&source_path).map_err(|error| {
                         Error::Config(format!("{}: {error}", source_path.display()))
                     })?;
@@ -120,28 +335,241 @@ impl FleetConfig {
                         )));
                     }
                 }
-                ManagedState::Absent if managed.source.is_some() => {
+                ManagedState::Absent | ManagedState::Unmanaged if managed.source.is_some() => {
                     return Err(Error::Config(format!(
-                        "tombstone {:?} cannot declare a source",
-                        managed.name
+                        "{:?} cannot declare a source when state is {}",
+                        managed.name,
+                        if managed.state == ManagedState::Absent {
+                            "absent"
+                        } else {
+                            "unmanaged"
+                        }
                     )));
                 }
-                ManagedState::Absent => {}
+                ManagedState::Absent | ManagedState::Unmanaged => {}
             }
+        }
+    }
+    Ok(())
+}
 
-            if ownership
-                .iter()
-                .any(|existing| managed_entries_overlap(existing, managed))
-            {
+/// Resolves inherited layers depth first, so a layer always appears after
+/// everything it inherits from and later layers override earlier ones.
+fn resolve_extends(
+    root: &Path,
+    extends: &[Extends],
+    layers: &mut Vec<Layer>,
+    visiting: &mut Vec<PathBuf>,
+) -> Result<()> {
+    for entry in extends {
+        entry.validate()?;
+        let layer_root = match (&entry.path, &entry.git) {
+            (subpath, Some(url)) => fetch_git_layer(
+                url,
+                entry.rev.as_ref().expect("validated"),
+                subpath.as_deref(),
+            )?,
+            (Some(path), None) => root.join(path),
+            (None, None) => unreachable!("validated"),
+        };
+        let layer_root = layer_root
+            .canonicalize()
+            .map_err(|source| Error::Config(format!("{}: {source}", layer_root.display())))?;
+
+        if visiting.contains(&layer_root) {
+            return Err(Error::Config(format!(
+                "extends cycle through {}",
+                layer_root.display()
+            )));
+        }
+        if layers.iter().any(|layer| layer.root == layer_root) {
+            continue;
+        }
+
+        let policy_path = layer_root.join(POLICY_FILE);
+        if !policy_path.is_file() {
+            if layer_root.join(FLEET_FILE).is_file() {
                 return Err(Error::Config(format!(
-                    "managed destination {} overlaps existing ownership",
-                    managed.destination.display()
+                    "{} contains {FLEET_FILE} but no {POLICY_FILE}; \
+                     extends must reference a policy library, because members are never inherited",
+                    layer_root.display()
                 )));
             }
-            ownership.push(managed);
+            return Err(Error::Config(format!(
+                "{} contains no {POLICY_FILE}",
+                layer_root.display()
+            )));
         }
-        Ok(())
+
+        let library = PolicyLibrary::load(&policy_path)?;
+        visiting.push(layer_root.clone());
+        resolve_extends(&layer_root, &library.extends, layers, visiting)?;
+        visiting.pop();
+        layers.push(Layer {
+            root: layer_root,
+            policy: library.policy,
+            managed: library.managed,
+            dependencies: library.dependencies,
+        });
     }
+    Ok(())
+}
+
+/// Fetches a pinned revision into a content-addressed cache. A pinned revision
+/// is immutable, so an existing entry is reused without touching the network.
+/// `subpath` selects a directory within the fetched repository, so one repository
+/// can publish several policy tiers. It defaults to the repository's own
+/// `.ordnung` directory, which is the shape of a dedicated configuration repository.
+fn fetch_git_layer(url: &str, rev: &str, subpath: Option<&Path>) -> Result<PathBuf> {
+    let cache = cache_root()?.join(format!("{}-{rev}", url_slug(url)));
+    let relative = subpath.unwrap_or(Path::new(CONFIG_DIR));
+    let layer = cache.join(relative);
+    // A pinned revision is immutable, so an existing checkout is reused as is.
+    if cache.join(".git").is_dir() {
+        return require_layer_dir(&layer, url, rev, relative);
+    }
+    if cache.exists() {
+        fs::remove_dir_all(&cache).map_err(|source| Error::io(&cache, source))?;
+    }
+    fs::create_dir_all(&cache).map_err(|source| Error::io(&cache, source))?;
+
+    git(&cache, &["init", "--quiet"])?;
+    git(&cache, &["remote", "add", "origin", url])?;
+    git(&cache, &["fetch", "--quiet", "--depth", "1", "origin", rev])?;
+    git(&cache, &["checkout", "--quiet", "FETCH_HEAD"])?;
+
+    require_layer_dir(&layer, url, rev, relative)
+}
+
+fn require_layer_dir(layer: &Path, url: &str, rev: &str, relative: &Path) -> Result<PathBuf> {
+    if layer.is_dir() {
+        return Ok(layer.to_path_buf());
+    }
+    Err(Error::Config(format!(
+        "{url} at {rev} contains no {} directory",
+        relative.display()
+    )))
+}
+
+fn git(dir: &Path, args: &[&str]) -> Result<()> {
+    let output = std::process::Command::new("git")
+        .current_dir(dir)
+        .args(args)
+        .output()
+        .map_err(|source| Error::io(dir, source))?;
+    if !output.status.success() {
+        return Err(Error::Config(format!(
+            "git {} failed: {}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    Ok(())
+}
+
+fn cache_root() -> Result<PathBuf> {
+    if let Some(dir) = std::env::var_os("ORDNUNG_CACHE_DIR") {
+        return Ok(PathBuf::from(dir));
+    }
+    let home = std::env::var_os("HOME")
+        .ok_or_else(|| Error::Config("HOME is not set; set ORDNUNG_CACHE_DIR".into()))?;
+    Ok(PathBuf::from(home).join(".cache").join("ordnung"))
+}
+
+/// A filesystem-safe, collision-resistant stand-in for a remote URL.
+fn url_slug(url: &str) -> String {
+    let name: String = url
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    let digest = url.bytes().fold(1469598103934665603u64, |hash, byte| {
+        (hash ^ u64::from(byte)).wrapping_mul(1099511628211)
+    });
+    let trimmed: String = name.trim_matches('-').chars().take(48).collect();
+    format!("{trimmed}-{digest:016x}")
+}
+
+/// Later layers win. Check severities merge per check id; GitHub settings per field.
+fn merge_policy(layers: &[Layer]) -> FleetPolicy {
+    let mut merged = FleetPolicy::default();
+    for layer in layers {
+        for (name, policy) in &layer.policy.checks {
+            merged.checks.insert(name.clone(), policy.clone());
+        }
+        let github = &layer.policy.github;
+        if let Some(value) = &github.allow_auto_merge {
+            merged.github.allow_auto_merge = Some(value.clone());
+        }
+        if let Some(value) = &github.delete_branch_on_merge {
+            merged.github.delete_branch_on_merge = Some(value.clone());
+        }
+        if let Some(value) = &github.allow_update_branch {
+            merged.github.allow_update_branch = Some(value.clone());
+        }
+    }
+    merged
+}
+
+/// Merges managed entries by name, preserving first-declaration order so plans
+/// stay stable. `Unmanaged` drops an inherited entry rather than deleting files.
+fn merge_managed(layers: &[Layer]) -> Result<Vec<ResolvedManaged>> {
+    let mut merged: Vec<ResolvedManaged> = Vec::new();
+    for layer in layers {
+        for entry in &layer.managed {
+            let existing = merged
+                .iter()
+                .position(|resolved| resolved.entry.name == entry.name);
+            match (entry.state, existing) {
+                (ManagedState::Unmanaged, Some(index)) => {
+                    merged.remove(index);
+                }
+                (ManagedState::Unmanaged, None) => {
+                    return Err(Error::Config(format!(
+                        "unmanaged entry {:?} does not match any inherited managed entry",
+                        entry.name
+                    )));
+                }
+                (_, Some(index)) => {
+                    merged[index] = ResolvedManaged {
+                        root: layer.root.clone(),
+                        entry: entry.clone(),
+                    };
+                }
+                (_, None) => merged.push(ResolvedManaged {
+                    root: layer.root.clone(),
+                    entry: entry.clone(),
+                }),
+            }
+        }
+    }
+    Ok(merged)
+}
+
+/// Merges dependency requirements by name, mirroring managed entries:
+/// a later layer replaces an inherited entry, and `unmanaged` drops it.
+fn merge_dependencies(layers: &[Layer]) -> Result<Vec<DependencyRequirement>> {
+    let mut merged: Vec<DependencyRequirement> = Vec::new();
+    for layer in layers {
+        for requirement in &layer.dependencies {
+            let existing = merged
+                .iter()
+                .position(|candidate| candidate.name == requirement.name);
+            match (requirement.state, existing) {
+                (ManagedState::Unmanaged, Some(index)) => {
+                    merged.remove(index);
+                }
+                (ManagedState::Unmanaged, None) => {
+                    return Err(Error::Config(format!(
+                        "unmanaged dependency requirement {:?} does not match any inherited requirement",
+                        requirement.name
+                    )));
+                }
+                (_, Some(index)) => merged[index] = requirement.clone(),
+                (_, None) => merged.push(requirement.clone()),
+            }
+        }
+    }
+    Ok(merged)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,12 +604,18 @@ pub struct ManagedEntry {
     pub only: Vec<String>,
 }
 
+/// What a managed entry asserts about its destination in each member repository.
+///
+/// `Absent` is an assertion that deletes; `Unmanaged` only drops an inherited
+/// entry and never touches member files. Keeping them distinct means opting out
+/// of an upstream entry cannot silently delete files across the fleet.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ManagedState {
     #[default]
     Present,
     Absent,
+    Unmanaged,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -278,11 +712,10 @@ impl ManagedChange {
 }
 
 pub fn plan_managed_changes(
-    fleet_root: &Path,
     member_repo: &str,
     member_root: &Path,
     inventory: &Inventory,
-    entries: &[ManagedEntry],
+    entries: &[ResolvedManaged],
 ) -> Result<Vec<ManagedChange>> {
     validate_repo_name(member_repo)?;
     let member_root = member_root
@@ -290,7 +723,10 @@ pub fn plan_managed_changes(
         .map_err(|source| Error::io(member_root, source))?;
     let mut planned: BTreeMap<PathBuf, ManagedChange> = BTreeMap::new();
 
-    for entry in entries {
+    for resolved in entries {
+        let entry = &resolved.entry;
+        // Sources resolve against the layer that declared them, not the fleet.
+        let fleet_root = resolved.root.as_path();
         if !entry.only.is_empty() && !entry.only.iter().any(|repo| repo == member_repo) {
             continue;
         }
@@ -312,6 +748,8 @@ pub fn plan_managed_changes(
                         )?;
                     }
                 }
+                // Merging already removed these; they never reach a member repo.
+                ManagedState::Unmanaged => {}
                 ManagedState::Present => {
                     let source = fleet_root.join(entry.source.as_ref().expect("validated"));
                     if source.is_dir() {

@@ -10,7 +10,7 @@ const PREFERRED_PATH: &str = "notes/field_guide.md";
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "field-guide",
-    default_severity: Severity::Recommended,
+    default_severity: Severity::Off,
     category: CheckCategory::Documentation,
     instructions: "At the start of work, find and read `field_guide.md`; append concise, durable discoveries that will help future agents. Keep the file in the repository, preferably at `notes/field_guide.md`.",
     repository_runner: Some(run),

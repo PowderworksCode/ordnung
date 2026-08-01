@@ -9,7 +9,7 @@ use crate::github::GithubValue;
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "required-checks",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::GithubSafeguards,
     instructions: "Require every check posted by pull-request workflows before default-branch changes merge.",
     repository_runner: None,

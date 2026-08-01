@@ -14,7 +14,7 @@ use crate::inventory::PackageInstance;
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "stylelint",
-    default_severity: Severity::Required,
+    default_severity: Severity::Off,
     category: CheckCategory::BuildToolchain,
     instructions: "For each package containing CSS, SCSS, Sass, or Less, keep a Stylelint configuration in that package or an ancestor and run Stylelint on pushes or pull requests.",
     repository_runner: Some(run),

@@ -8,7 +8,7 @@ use crate::github::GithubValue;
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "ruleset-bypass",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::GithubSafeguards,
     instructions: "Give every active branch ruleset that gates merging at least one explicit bypass actor for emergency administration.",
     repository_runner: None,

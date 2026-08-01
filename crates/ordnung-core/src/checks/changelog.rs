@@ -15,7 +15,7 @@ const CANDIDATES: [&str; 5] = [
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "changelog",
-    default_severity: Severity::Required,
+    default_severity: Severity::Recommended,
     category: CheckCategory::Documentation,
     instructions: "Keep a root CHANGELOG.md, CHANGELOG, CHANGELOG.txt, CHANGES.md, or HISTORY.md; format and versioning style are repository choices.",
     repository_runner: Some(run),

@@ -1,9 +1,11 @@
 use std::fs;
 
+use ordnung_core::fleet::ManagedState;
 use ordnung_core::{
-    CheckStatus, CiExistsConfig, InventoryOptions, LanguageTestLayout, RepoConfig, Severity,
-    TestLayoutConfig, default_policy, inspect_repository, run_repository_checks_with_config,
-    run_repository_checks_with_repo_config,
+    CheckStatus, CiExistsConfig, DependencyRequirement, InventoryOptions, LanguageTestLayout,
+    RepoConfig, Severity, TestLayoutConfig, default_policy, inspect_repository,
+    run_repository_checks_with_config, run_repository_checks_with_repo_config,
+    run_repository_checks_with_requirements,
 };
 
 #[test]
@@ -27,7 +29,10 @@ fn rust_test_layout_rejects_inline_tests_and_requires_a_mirror() {
     let failures: Vec<_> = report
         .results
         .iter()
-        .filter(|result| result.check == "test-layout" && result.status == CheckStatus::Fail)
+        .filter(|result| {
+            matches!(result.check.as_str(), "test-inline" | "test-mirror")
+                && result.status == CheckStatus::Fail
+        })
         .collect();
     assert_eq!(failures.len(), 2);
     assert!(
@@ -35,16 +40,18 @@ fn rust_test_layout_rejects_inline_tests_and_requires_a_mirror() {
             .iter()
             .all(|result| result.severity == Severity::Off)
     );
-    assert!(
-        failures
-            .iter()
-            .any(|result| result.message.contains("inline"))
-    );
-    assert!(
-        failures
-            .iter()
-            .any(|result| result.message.contains("mirrored"))
-    );
+    // Each position is now reported by its own check, so a fleet can require one
+    // without the other.
+    let inline = failures
+        .iter()
+        .find(|result| result.check == "test-inline")
+        .expect("test-inline reports the inline module");
+    assert!(inline.message.contains("inline"), "{}", inline.message);
+    let mirror = failures
+        .iter()
+        .find(|result| result.check == "test-mirror")
+        .expect("test-mirror reports the missing mirror");
+    assert!(mirror.message.contains("mirrored"), "{}", mirror.message);
 
     fs::write(
         repo.path().join("src/lib.rs"),
@@ -55,12 +62,15 @@ fn rust_test_layout_rejects_inline_tests_and_requires_a_mirror() {
     fs::write(repo.path().join("tests/lib.rs"), "#[test]\nfn value() {}\n").unwrap();
     let clean =
         run_repository_checks_with_config(repo.path(), &inventory, &TestLayoutConfig::default());
-    assert!(
-        clean
-            .results
-            .iter()
-            .any(|result| { result.check == "test-layout" && result.status == CheckStatus::Pass })
-    );
+    for check in ["test-inline", "test-mirror"] {
+        assert!(
+            clean
+                .results
+                .iter()
+                .any(|result| result.check == check && result.status == CheckStatus::Pass),
+            "{check} should pass"
+        );
+    }
 }
 
 #[test]
@@ -100,13 +110,14 @@ fn typescript_layout_accepts_configured_external_suffix() {
         report
             .results
             .iter()
-            .any(|result| { result.check == "test-layout" && result.status == CheckStatus::Pass })
+            .any(|result| { result.check == "test-mirror" && result.status == CheckStatus::Pass })
     );
 }
 
 #[test]
-fn test_layout_is_optional_by_default() {
-    assert_eq!(default_policy()["test-layout"], Severity::Off);
+fn test_layout_checks_are_optional_by_default() {
+    assert_eq!(default_policy()["test-inline"], Severity::Off);
+    assert_eq!(default_policy()["test-mirror"], Severity::Off);
 }
 
 #[test]
@@ -384,10 +395,28 @@ fn advisory_checks_keep_recommended_defaults() {
         "auto-update-pr-branches",
         "ci-job-timeout",
         "ci-scheduled-run",
-        "field-guide",
         "repo-meta",
     ] {
         assert_eq!(policy[check], Severity::Recommended, "{check}");
+    }
+}
+
+/// A specific linter or an Ordnung-specific convention is a house preference, so it
+/// ships off and a fleet raises it deliberately.
+#[test]
+fn house_preference_checks_ship_off() {
+    let policy = default_policy();
+    for check in [
+        "action-badge",
+        "field-guide",
+        "stray-files",
+        "stylelint",
+        "test-inline",
+        "test-mirror",
+        "vale",
+        "website",
+    ] {
+        assert_eq!(policy[check], Severity::Off, "{check}");
     }
 }
 
@@ -403,7 +432,7 @@ fn field_guide_can_live_anywhere_in_the_repository() {
         .find(|result| result.check == "field-guide")
         .unwrap();
     assert_eq!(missing.status, CheckStatus::Fail);
-    assert_eq!(missing.severity, Severity::Recommended);
+    assert_eq!(missing.severity, Severity::Off);
     assert_eq!(missing.scope, std::path::Path::new("notes/field_guide.md"));
 
     fs::create_dir_all(repo.path().join("knowledge")).unwrap();
@@ -1571,7 +1600,7 @@ fn complete_readme(link: &str) -> String {
 }
 
 #[test]
-fn readme_requires_the_complete_documentation_floor() {
+fn readme_requires_existence_and_a_title_while_quality_judges_the_shape() {
     let repo = tempfile::tempdir().unwrap();
 
     let inventory = inspect_repository(repo.path(), &InventoryOptions::default()).unwrap();
@@ -1589,10 +1618,16 @@ fn readme_requires_the_complete_documentation_floor() {
     let inventory = inspect_repository(repo.path(), &InventoryOptions::default()).unwrap();
     let report =
         run_repository_checks_with_repo_config(repo.path(), &inventory, &RepoConfig::default());
-    let thin = report
+    let floor = report
         .results
         .iter()
         .find(|result| result.check == "readme")
+        .unwrap();
+    assert_eq!(floor.status, CheckStatus::Pass, "{}", floor.message);
+    let thin = report
+        .results
+        .iter()
+        .find(|result| result.check == "readme-quality")
         .unwrap();
     assert_eq!(thin.status, CheckStatus::Fail);
     for problem in [
@@ -1638,7 +1673,7 @@ fn readme_rejects_broken_and_escaping_relative_links() {
     let broken = report
         .results
         .iter()
-        .find(|result| result.check == "readme")
+        .find(|result| result.check == "readme-quality")
         .unwrap();
     assert_eq!(broken.status, CheckStatus::Fail);
     assert!(broken.message.contains("docs/missing.md"));
@@ -1654,7 +1689,7 @@ fn readme_rejects_broken_and_escaping_relative_links() {
     let escaping = report
         .results
         .iter()
-        .find(|result| result.check == "readme")
+        .find(|result| result.check == "readme-quality")
         .unwrap();
     assert_eq!(escaping.status, CheckStatus::Fail);
     assert!(escaping.message.contains("../outside.md"));
@@ -1675,7 +1710,7 @@ fn readme_accepts_its_word_limit_and_rejects_one_word_over() {
     let at_limit = report
         .results
         .iter()
-        .find(|result| result.check == "readme")
+        .find(|result| result.check == "readme-quality")
         .unwrap();
     assert_eq!(at_limit.status, CheckStatus::Pass, "{}", at_limit.message);
 
@@ -1687,7 +1722,7 @@ fn readme_accepts_its_word_limit_and_rejects_one_word_over() {
     let over_limit = report
         .results
         .iter()
-        .find(|result| result.check == "readme")
+        .find(|result| result.check == "readme-quality")
         .unwrap();
     assert_eq!(over_limit.status, CheckStatus::Fail);
     assert!(over_limit.message.contains("over 1500 words (1501)"));
@@ -1778,7 +1813,7 @@ fn retry_masking_uses_tool_profiles_for_commands_and_configs() {
 }
 
 #[test]
-fn pinned_versions_use_typed_dependency_and_action_facts() {
+fn pinned_actions_and_dependencies_report_separately() {
     let repo = tempfile::tempdir().unwrap();
     fs::write(
         repo.path().join("package.json"),
@@ -1794,16 +1829,27 @@ fn pinned_versions_use_typed_dependency_and_action_facts() {
     let inventory = inspect_repository(repo.path(), &InventoryOptions::default()).unwrap();
     let report =
         run_repository_checks_with_repo_config(repo.path(), &inventory, &RepoConfig::default());
-    let pinned = report
-        .results
-        .iter()
-        .find(|result| result.check == "pinned-versions")
-        .unwrap();
-    assert_eq!(pinned.status, CheckStatus::Fail);
-    assert!(pinned.message.contains("floating ^2.0.0"));
-    assert!(pinned.message.contains("actions/checkout@v4"));
-    assert!(!pinned.message.contains("local"));
-    assert!(!pinned.message.contains("peer"));
+    let find = |id: &str| {
+        report
+            .results
+            .iter()
+            .find(|result| result.check == id)
+            .unwrap_or_else(|| panic!("{id} runs"))
+    };
+    // The security-relevant half is required; the package half is advisory.
+    let actions = find("pinned-actions");
+    assert_eq!(actions.status, CheckStatus::Fail);
+    assert_eq!(actions.severity, Severity::Required);
+    assert!(actions.message.contains("actions/checkout@v4"));
+    assert!(!actions.message.contains("floating ^2.0.0"));
+
+    let dependencies = find("pinned-dependencies");
+    assert_eq!(dependencies.status, CheckStatus::Fail);
+    assert_eq!(dependencies.severity, Severity::Recommended);
+    assert!(dependencies.message.contains("floating ^2.0.0"));
+    assert!(!dependencies.message.contains("actions/checkout"));
+    assert!(!dependencies.message.contains("local"));
+    assert!(!dependencies.message.contains("peer"));
 }
 
 #[test]
@@ -1826,18 +1872,21 @@ fn cargo_ranges_are_advisory_and_action_channels_are_allowed() {
     let inventory = inspect_repository(repo.path(), &InventoryOptions::default()).unwrap();
     let report =
         run_repository_checks_with_repo_config(repo.path(), &inventory, &RepoConfig::default());
-    let pinned = report
+    let dependencies = report
         .results
         .iter()
-        .find(|result| result.check == "pinned-versions")
+        .find(|result| result.check == "pinned-dependencies")
         .unwrap();
-    assert_eq!(pinned.status, CheckStatus::Pass);
-    assert!(pinned.message.contains("Cargo advisory"));
-    assert!(
-        pinned
-            .message
-            .contains("allowed GitHub Action release channel")
-    );
+    assert_eq!(dependencies.status, CheckStatus::Pass);
+    assert!(dependencies.message.contains("Cargo advisory"));
+
+    let actions = report
+        .results
+        .iter()
+        .find(|result| result.check == "pinned-actions")
+        .unwrap();
+    assert_eq!(actions.status, CheckStatus::Pass);
+    assert!(actions.message.contains("allowed release channel"));
 }
 
 #[test]
@@ -1880,4 +1929,167 @@ fn heavy_pull_request_jobs_require_structured_scoping() {
             .iter()
             .any(|result| result.check == "ci-scoped" && result.status == CheckStatus::Pass)
     );
+}
+
+fn requirement(name: &str, language: &str, require: &[&str]) -> DependencyRequirement {
+    DependencyRequirement {
+        name: name.into(),
+        language: Some(language.into()),
+        ecosystem: None,
+        require: require
+            .iter()
+            .map(|package| (*package).to_owned())
+            .collect(),
+        kind: None,
+        state: ManagedState::Present,
+    }
+}
+
+fn dependency_result(
+    repo: &std::path::Path,
+    manifest: &str,
+    requirements: &[DependencyRequirement],
+) -> ordnung_core::CheckResult {
+    fs::create_dir_all(repo.join("src")).unwrap();
+    fs::write(repo.join("Cargo.toml"), manifest).unwrap();
+    fs::write(repo.join("src/lib.rs"), "pub fn value() {}\n").unwrap();
+    let inventory = inspect_repository(repo, &InventoryOptions::default()).unwrap();
+    let report = run_repository_checks_with_requirements(
+        repo,
+        &inventory,
+        &RepoConfig::default(),
+        requirements,
+    );
+    report
+        .results
+        .into_iter()
+        .find(|result| result.check == "required-dependencies")
+        .expect("required-dependencies runs")
+}
+
+#[test]
+fn required_dependencies_skips_when_no_requirement_is_configured() {
+    let repo = tempfile::tempdir().unwrap();
+    let result = dependency_result(
+        repo.path(),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n",
+        &[],
+    );
+    assert_eq!(result.status, CheckStatus::Skip);
+}
+
+#[test]
+fn required_dependencies_reports_a_missing_package() {
+    let repo = tempfile::tempdir().unwrap();
+    let result = dependency_result(
+        repo.path(),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n",
+        &[requirement("rust-refactoring", "rust", &["itertools"])],
+    );
+    assert_eq!(result.status, CheckStatus::Fail);
+    assert!(result.message.contains("itertools"), "{}", result.message);
+}
+
+#[test]
+fn required_dependencies_accepts_a_declared_package() {
+    let repo = tempfile::tempdir().unwrap();
+    let result = dependency_result(
+        repo.path(),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n\
+         [dependencies]\nitertools = \"0.14\"\n",
+        &[requirement("rust-refactoring", "rust", &["itertools"])],
+    );
+    assert_eq!(result.status, CheckStatus::Pass, "{}", result.message);
+}
+
+#[test]
+fn required_dependencies_ignore_packages_of_another_language() {
+    let repo = tempfile::tempdir().unwrap();
+    let result = dependency_result(
+        repo.path(),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n",
+        &[requirement("ts-refactoring", "typescript", &["remeda"])],
+    );
+    assert_eq!(result.status, CheckStatus::Pass, "{}", result.message);
+}
+
+#[test]
+fn a_workspace_member_resolves_an_inherited_declaration_and_the_root_is_not_required() {
+    let repo = tempfile::tempdir().unwrap();
+    let root = repo.path();
+    fs::create_dir_all(root.join("crates/member/src")).unwrap();
+    fs::write(
+        root.join("Cargo.toml"),
+        "[workspace]\nmembers = [\"crates/member\"]\nresolver = \"3\"\n\
+         [workspace.dependencies]\nitertools = \"0.14\"\n",
+    )
+    .unwrap();
+    // Cargo requires the member to opt in; the root declaration alone grants nothing.
+    fs::write(
+        root.join("crates/member/Cargo.toml"),
+        "[package]\nname = \"member\"\nversion = \"0.0.0\"\n\
+         [dependencies]\nitertools.workspace = true\n",
+    )
+    .unwrap();
+    fs::write(root.join("crates/member/src/lib.rs"), "pub fn value() {}\n").unwrap();
+    let inventory = inspect_repository(root, &InventoryOptions::default()).unwrap();
+
+    let report = run_repository_checks_with_requirements(
+        root,
+        &inventory,
+        &RepoConfig::default(),
+        &[requirement("rust-refactoring", "rust", &["itertools"])],
+    );
+    let result = report
+        .results
+        .iter()
+        .find(|result| result.check == "required-dependencies")
+        .expect("required-dependencies runs");
+    assert_eq!(result.status, CheckStatus::Pass, "{}", result.message);
+}
+
+/// A Bun or npm package reports `javascript` from its manifest while the project
+/// around it is TypeScript. Selecting `typescript` must still match it.
+#[test]
+fn a_typescript_project_matches_though_its_package_language_is_javascript() {
+    let repo = tempfile::tempdir().unwrap();
+    let root = repo.path();
+    fs::create_dir_all(root.join("site/src")).unwrap();
+    fs::write(root.join("site/package.json"), "{\"name\":\"site\"}").unwrap();
+    fs::write(root.join("site/tsconfig.json"), "{}").unwrap();
+    fs::write(root.join("site/src/index.ts"), "export const value = 1;\n").unwrap();
+    let inventory = inspect_repository(root, &InventoryOptions::default()).unwrap();
+
+    let package = inventory
+        .packages
+        .iter()
+        .find(|package| package.root == std::path::Path::new("site"))
+        .expect("the site package is discovered");
+    assert_eq!(
+        package.language.as_str(),
+        "javascript",
+        "manifest language is what makes this case worth testing"
+    );
+
+    let requirement = DependencyRequirement {
+        name: "ts-refactoring".into(),
+        language: Some("typescript".into()),
+        ecosystem: None,
+        require: vec!["lodash".into()],
+        kind: None,
+        state: ManagedState::Present,
+    };
+    let report = run_repository_checks_with_requirements(
+        root,
+        &inventory,
+        &RepoConfig::default(),
+        &[requirement],
+    );
+    let result = report
+        .results
+        .iter()
+        .find(|result| result.check == "required-dependencies")
+        .expect("required-dependencies runs");
+    assert_eq!(result.status, CheckStatus::Fail, "{}", result.message);
+    assert!(result.message.contains("lodash"), "{}", result.message);
 }

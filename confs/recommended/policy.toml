@@ -1,0 +1,77 @@
+name = "recommended"
+
+# Every known check is explicit so a policy change is reviewable here.
+# allow_override governs member repositories only; a fleet that extends this
+# library may redefine anything it inherits.
+#
+# Checks left off here are deliberate: a specific linter (Vale, Stylelint) or an
+# Ordnung-specific convention is a house preference, not something a tier other
+# people adopt should mandate. A fleet raises those for itself.
+[policy.checks]
+action-badge = { severity = "off", allow_override = true }
+allow-auto-merge = { severity = "required", allow_override = false }
+artifacts-built = { severity = "required", allow_override = true }
+auto-update-pr-branches = { severity = "required", allow_override = false }
+branch-protection = { severity = "required", allow_override = false }
+builds = { severity = "required", allow_override = false }
+changelog = { severity = "required", allow_override = true }
+ci-continue-on-error = { severity = "required", allow_override = false }
+ci-exists = { severity = "required", allow_override = false }
+ci-green = { severity = "required", allow_override = false }
+ci-job-timeout = { severity = "required", allow_override = false }
+ci-scheduled-run = { severity = "required", allow_override = false }
+ci-scoped = { severity = "required", allow_override = true }
+codegen-drift = { severity = "required", allow_override = true }
+codeowners = { severity = "required", allow_override = false }
+codespell = { severity = "required", allow_override = true }
+conventional-commits = { severity = "required", allow_override = false }
+dependabot = { severity = "required", allow_override = false }
+dependabot-automerge = { severity = "required", allow_override = true }
+field-guide = { severity = "off", allow_override = true }
+gitignore = { severity = "required", allow_override = false }
+license = { severity = "required", allow_override = false }
+lockfiles = { severity = "required", allow_override = false }
+pinned-actions = { severity = "required", allow_override = false }
+pinned-dependencies = { severity = "required", allow_override = false }
+project-inventory = { severity = "required", allow_override = false }
+readme = { severity = "required", allow_override = false }
+readme-quality = { severity = "required", allow_override = true }
+repo-meta = { severity = "required", allow_override = false }
+reproducible-toolchain = { severity = "required", allow_override = false }
+required-checks = { severity = "required", allow_override = false }
+required-dependencies = { severity = "required", allow_override = true }
+ruleset-bypass = { severity = "required", allow_override = false }
+scripts = { severity = "required", allow_override = true }
+secret-scanning = { severity = "required", allow_override = false }
+stale = { severity = "required", allow_override = true }
+stray-files = { severity = "off", allow_override = false }
+strict-status-checks = { severity = "required", allow_override = false }
+stylelint = { severity = "off", allow_override = true }
+test-inline = { severity = "off", allow_override = true }
+test-mirror = { severity = "off", allow_override = true }
+test-retry-masking = { severity = "required", allow_override = false }
+typecheck = { severity = "required", allow_override = false }
+vale = { severity = "off", allow_override = true }
+website = { severity = "off", allow_override = true }
+workflow-permissions = { severity = "required", allow_override = false }
+
+[policy.github.delete_branch_on_merge]
+value = true
+allow_override = false
+
+[policy.github.allow_update_branch]
+value = true
+allow_override = false
+
+# Libraries every project of a language must depend on, so that automated
+# refactoring can rely on them being available. Names are registry-specific,
+# which is why each entry selects a single language or ecosystem.
+[[dependency]]
+name = "rust-refactoring"
+language = "rust"
+require = ["itertools"]
+
+[[dependency]]
+name = "typescript-refactoring"
+language = "typescript"
+require = ["remeda", "ts-pattern", "zod"]

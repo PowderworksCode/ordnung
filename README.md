@@ -57,17 +57,17 @@ cargo run -p ordnung-cli -- fix .
 cargo run -p ordnung-cli -- instructions .
 cargo run -p ordnung-cli -- instructions . \
   --write AGENTS.md --write CLAUDE.md
-cargo run -p ordnung-cli -- fleet check ../fleet-configuration/fleet.toml
-cargo run -p ordnung-cli -- fleet sync ../fleet-configuration/fleet.toml \
+cargo run -p ordnung-cli -- fleet check ../conf/.ordnung/fleet.toml
+cargo run -p ordnung-cli -- fleet sync ../conf/.ordnung/fleet.toml \
   --repo PowderworksCode/ordnung --repo-root .
 cargo run -p ordnung-cli -- github check PowderworksCode/ordnung
-cargo run -p ordnung-cli -- fleet github-check ../fleet-configuration/fleet.toml
+cargo run -p ordnung-cli -- fleet github-check ../conf/.ordnung/fleet.toml
 cargo run -p ordnung-cli -- fleet github-sync-settings \
-  ../fleet-configuration/fleet.toml --repo PowderworksCode/ordnung
+  ../conf/.ordnung/fleet.toml --repo PowderworksCode/ordnung
 cargo run -p ordnung-cli -- fleet github-sync \
-  ../fleet-configuration/fleet.toml --repo PowderworksCode/ordnung
+  ../conf/.ordnung/fleet.toml --repo PowderworksCode/ordnung
 cargo run -p ordnung-cli -- fleet github-sync-all \
-  ../fleet-configuration/fleet.toml
+  ../conf/.ordnung/fleet.toml
 ```
 
 Mutation commands are dry-run by default. `--apply` writes local exact fixes,
@@ -76,6 +76,31 @@ remediation pull request. JSON responses use a versioned envelope with
 `schema_version`, `command`, `ok`, and `data`. Exit code `0` means clean or
 successfully applied local state, `1` means policy drift, and `2` means an
 operational or configuration error.
+
+## Shipped configuration
+
+Ordnung ships policy tiers under `confs/`, each consumed through the same
+`[[extends]]` mechanism a third-party configuration uses, so nothing about
+publishing a configuration is special-cased for Ordnung:
+
+| Tier | Intent |
+| --- | --- |
+| built-in defaults | The floor. Close to industry consensus, so a fresh repository gets actionable output. |
+| [`confs/recommended`](confs/recommended) | Stricter practices most teams would accept. Mandates no specific linter. |
+| [`confs/paranoid`](confs/paranoid) | Everything on, including specific tools and Ordnung's own conventions. Extends `recommended`. |
+
+```toml
+[[extends]]
+git = "https://github.com/PowderworksCode/ordnung"
+rev = "<full 40-character commit revision>"
+path = "confs/paranoid"
+```
+
+A tier extends the one below it, so each file is the difference between tiers
+rather than a restatement of the whole check list.
+
+Revisions are pinned deliberately: an inherited layer can write files into every
+member repository, so a moving reference would make plans non-deterministic.
 
 ## Documentation
 
