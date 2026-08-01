@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -17,6 +17,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "license",
     default_severity: Severity::Recommended,
     category: CheckCategory::Documentation,
+    scope: CheckScope::Repository,
     instructions: "Keep a root LICENSE, LICENSE.md, LICENSE.txt, COPYING, or UNLICENSE file; GitHub SPDX classification is useful but nonstandard license text is allowed.",
     repository_runner: Some(run_repository),
     github_runner: Some(run_github),

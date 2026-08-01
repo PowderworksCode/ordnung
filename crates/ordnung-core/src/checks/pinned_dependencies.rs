@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use entl_codebase::{DependencyKind, DependencyPinStatus};
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -17,6 +17,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "pinned-dependencies",
     default_severity: Severity::Recommended,
     category: CheckCategory::Dependencies,
+    scope: CheckScope::Project,
     instructions: "Use exact npm/Bun dependency versions; local dependencies are exempt and Cargo ranges stay advisory because Cargo.lock owns resolution.",
     repository_runner: Some(run),
     github_runner: None,

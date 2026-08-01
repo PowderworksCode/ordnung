@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use entl_codebase::{CiWorkload, tool_profile};
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -11,6 +11,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "ci-scoped",
     default_severity: Severity::Recommended,
     category: CheckCategory::CiSafety,
+    scope: CheckScope::Repository,
     instructions: "Gate heavy pull-request jobs with workflow path filters, a job condition, or a dependency on an output-producing fanout job.",
     repository_runner: Some(run),
     github_runner: None,

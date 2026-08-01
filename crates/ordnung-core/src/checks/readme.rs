@@ -3,7 +3,7 @@ use std::path::{Component, Path, PathBuf};
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag};
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -11,6 +11,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "readme",
     default_severity: Severity::Required,
     category: CheckCategory::Documentation,
+    scope: CheckScope::Repository,
     instructions: "Keep a root README that opens with an H1 title in its first ten nonblank lines.",
     repository_runner: Some(run),
     github_runner: None,

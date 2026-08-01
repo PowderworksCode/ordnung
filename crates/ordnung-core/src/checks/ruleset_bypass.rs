@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 use crate::github::GithubValue;
@@ -10,6 +10,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "ruleset-bypass",
     default_severity: Severity::Recommended,
     category: CheckCategory::GithubSafeguards,
+    scope: CheckScope::Repository,
     instructions: "Give every active branch ruleset that gates merging at least one explicit bypass actor for emergency administration.",
     repository_runner: None,
     github_runner: Some(run),

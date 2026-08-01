@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 use crate::github::GithubValue;
@@ -10,6 +10,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "dependabot-automerge",
     default_severity: Severity::Recommended,
     category: CheckCategory::Dependencies,
+    scope: CheckScope::Repository,
     instructions: "When github.allow_auto_merge is explicitly enabled, use a Dependabot-only pull-request workflow that fetches update metadata, excludes major updates, and enables auto-merge behind required checks.",
     repository_runner: None,
     github_runner: Some(run),

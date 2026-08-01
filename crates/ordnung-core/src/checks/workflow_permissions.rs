@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 use crate::github::{GithubDefaultWorkflowPermissions, GithubValue};
@@ -10,6 +10,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "workflow-permissions",
     default_severity: Severity::Required,
     category: CheckCategory::CiSafety,
+    scope: CheckScope::Repository,
     instructions: "Keep the repository's default GITHUB_TOKEN read-only and prevent workflows from approving pull requests; jobs that need write access must grant it explicitly with a permissions block.",
     repository_runner: None,
     github_runner: Some(run),

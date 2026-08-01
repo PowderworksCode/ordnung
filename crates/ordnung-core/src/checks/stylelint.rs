@@ -7,7 +7,7 @@ use entl_codebase::{
 };
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 use crate::inventory::PackageInstance;
@@ -16,6 +16,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "stylelint",
     default_severity: Severity::Off,
     category: CheckCategory::BuildToolchain,
+    scope: CheckScope::Project,
     instructions: "For each package containing CSS, SCSS, Sass, or Less, keep a Stylelint configuration in that package or an ancestor and run Stylelint on pushes or pull requests.",
     repository_runner: Some(run),
     github_runner: None,

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -9,6 +9,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "ci-job-timeout",
     default_severity: Severity::Recommended,
     category: CheckCategory::CiSafety,
+    scope: CheckScope::Repository,
     instructions: "Give every push and pull-request CI job an explicit finite timeout; reusable-workflow jobs are exempt because GitHub does not allow the setting there.",
     repository_runner: Some(run),
     github_runner: None,

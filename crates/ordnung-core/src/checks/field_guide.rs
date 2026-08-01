@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckRemediation, CheckResult, CheckStatus,
-    RepositoryCheckContext, Severity, registry, result, result_with_remediation,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckRemediation, CheckResult, CheckScope,
+    CheckStatus, RepositoryCheckContext, Severity, registry, result, result_with_remediation,
 };
 
 const FILE_NAME: &str = "field_guide.md";
@@ -12,6 +12,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "field-guide",
     default_severity: Severity::Off,
     category: CheckCategory::Documentation,
+    scope: CheckScope::Repository,
     instructions: "At the start of work, find and read `field_guide.md`; append concise, durable discoveries that will help future agents. Keep the file in the repository, preferably at `notes/field_guide.md`.",
     repository_runner: Some(run),
     github_runner: None,

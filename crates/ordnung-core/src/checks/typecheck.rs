@@ -1,7 +1,7 @@
 use entl_codebase::{TaskKind, language_conventions};
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 use crate::profile::language_profile;
@@ -10,6 +10,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "typecheck",
     default_severity: Severity::Required,
     category: CheckCategory::BuildToolchain,
+    scope: CheckScope::Project,
     instructions: "Keep JavaScript and TypeScript projects on an explicit type layer and run their typechecker on push or pull requests.",
     repository_runner: Some(run),
     github_runner: None,

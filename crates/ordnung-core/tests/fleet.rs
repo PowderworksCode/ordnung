@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use ordnung_core::check::Severity;
-use ordnung_core::fleet::{ManagedEntry, ManagedState, ProjectSelector, RelativeTo};
+use ordnung_core::fleet::{ManagedEntry, ManagedState, ProjectSelector, RelativeTo, Stage};
 use ordnung_core::{
     ChangeKind, FleetConfig, InventoryOptions, LanguageId, ResolvedManaged, apply_changes,
     inspect_repository, plan_managed_changes,
@@ -490,4 +490,69 @@ fn a_three_level_chain_resolves_nearest_layer_last() {
     assert_eq!(checks["stale"].severity, Severity::Recommended);
     // Only the base layer mentioned it, so it survives untouched three levels down.
     assert_eq!(checks["license"].severity, Severity::Off);
+}
+
+/// A stage relaxes ceremony for one member without touching the rest of the fleet,
+/// and without relaxing hygiene or security for anyone.
+#[test]
+fn a_member_stage_relaxes_only_that_member() {
+    let base = tempfile::tempdir().unwrap();
+    let base_dir = config_dir(
+        base.path(),
+        &[(
+            "policy.toml",
+            "name = \"base\"\n\n\
+             [policy.checks]\n\
+             branch-protection = { severity = \"required\" }\n\
+             changelog = { severity = \"required\" }\n\
+             secret-scanning = { severity = \"required\" }\n\n\
+             [policy.stages.incubating.checks]\n\
+             branch-protection = { severity = \"off\" }\n\
+             changelog = { severity = \"off\" }\n",
+        )],
+    );
+
+    let fleet = tempfile::tempdir().unwrap();
+    let dir = config_dir(
+        fleet.path(),
+        &[(
+            "fleet.toml",
+            &format!(
+                "name = \"test\"\n\n[[extends]]\npath = {:?}\n\n\
+                 [[member]]\nrepo = \"owner/young\"\nstage = \"incubating\"\n\n\
+                 [[member]]\nrepo = \"owner/mature\"\n",
+                base_dir.to_str().unwrap()
+            ),
+        )],
+    );
+
+    let config = FleetConfig::load(&dir.join("fleet.toml")).unwrap();
+    assert_eq!(config.stage_of("owner/young"), Stage::Incubating);
+    // Omitting the field means supported, so existing fleets are unaffected.
+    assert_eq!(config.stage_of("owner/mature"), Stage::Supported);
+
+    let young = config.checks_for("owner/young");
+    let mature = config.checks_for("owner/mature");
+    assert_eq!(young["branch-protection"].severity, Severity::Off);
+    assert_eq!(mature["branch-protection"].severity, Severity::Required);
+    // Security is never part of what a stage relaxes.
+    assert_eq!(young["secret-scanning"].severity, Severity::Required);
+}
+
+#[test]
+fn an_unknown_stage_name_in_policy_is_rejected() {
+    let fleet = tempfile::tempdir().unwrap();
+    let dir = config_dir(
+        fleet.path(),
+        &[(
+            "fleet.toml",
+            &format!(
+                "{MEMBER}\n[policy.stages.experimental.checks]\nchangelog = {{ severity = \"off\" }}\n"
+            ),
+        )],
+    );
+    let error = FleetConfig::load(&dir.join("fleet.toml"))
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("unknown stage"), "{error}");
 }

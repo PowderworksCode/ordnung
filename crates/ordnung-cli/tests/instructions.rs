@@ -41,6 +41,7 @@ fn renders_concise_effective_rules() {
     let local = RepoConfig::default();
     let output = render(&InstructionContext {
         inventory: &inventory,
+        stage: None,
         policy: &policy,
         github: &GithubSettings::default(),
         test_layout: &local.test_layout,
@@ -82,6 +83,7 @@ fn renders_effective_script_locations_and_exact_exceptions() {
     .unwrap();
     let output = render(&InstructionContext {
         inventory: &inventory,
+        stage: None,
         policy: &policy,
         github: &GithubSettings::default(),
         test_layout: &local.test_layout,
@@ -105,6 +107,7 @@ fn renders_effective_note_corral() {
     let policy = BTreeMap::from([("stray-files".into(), Severity::Required)]);
     let output = render(&InstructionContext {
         inventory: &inventory,
+        stage: None,
         policy: &policy,
         github: &GithubSettings::default(),
         test_layout: &local.test_layout,
@@ -126,6 +129,7 @@ fn every_registered_check_supplies_its_own_instructions() {
         .collect();
     let output = render(&InstructionContext {
         inventory: &inventory,
+        stage: None,
         policy: &policy,
         github: &GithubSettings::default(),
         test_layout: &local.test_layout,
@@ -183,6 +187,7 @@ fn renders_declared_codegen_commands_and_outputs() {
     };
     let output = render(&InstructionContext {
         inventory: &inventory,
+        stage: None,
         policy: &BTreeMap::new(),
         github: &GithubSettings::default(),
         test_layout: &local.test_layout,

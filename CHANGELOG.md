@@ -4,6 +4,17 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## 2026-08-01
 
+- Added a member `stage` of `incubating` or `supported`, with per-stage severity
+  deltas under `[policy.stages.<name>.checks]`. The stage is assigned by the fleet,
+  not requested by the member, so graduating is a reviewable change in one file. It
+  relaxes pull-request governance, consumer-facing documentation, and team process;
+  it never relaxes hygiene or security.
+- Archived repositories now report one `skip` per check explaining the state instead
+  of failures nobody can act on, because GitHub refuses writes to them and Ordnung
+  refuses to open a pull request against one.
+- Every check now declares a `CheckScope` of `repository` or `project`, so policy
+  that selects directories can be validated instead of silently misfiring.
+
 - Split `test-layout` into `test-inline`, which keeps tests out of source files,
   and `test-mirror`, which requires a mirrored test file per source file. They were
   previously two booleans on one check's repository-local configuration, which fleet

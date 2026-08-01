@@ -1,5 +1,5 @@
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -12,6 +12,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "test-mirror",
     default_severity: Severity::Off,
     category: CheckCategory::BuildToolchain,
+    scope: CheckScope::Project,
     instructions: "Give every source file a mirrored test file under the configured test root, matching its path and a configured test suffix.",
     repository_runner: Some(run),
     github_runner: None,

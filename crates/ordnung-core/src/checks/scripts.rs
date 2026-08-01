@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -10,6 +10,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "scripts",
     default_severity: Severity::Recommended,
     category: CheckCategory::RepositoryShape,
+    scope: CheckScope::Repository,
     instructions: "Keep detected shell scripts under the configured scripts.directory, except exact scripts.allow paths; provide the configured development script there and name its repository-relative path in the root README.",
     repository_runner: Some(run),
     github_runner: None,

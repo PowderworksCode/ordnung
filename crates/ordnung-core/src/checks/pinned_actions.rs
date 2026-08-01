@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use entl_github::ActionPinStatus;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -17,6 +17,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "pinned-actions",
     default_severity: Severity::Required,
     category: CheckCategory::Dependencies,
+    scope: CheckScope::Repository,
     instructions: "Reference third-party GitHub Actions by commit SHA; local actions are exempt and first-party release channels are allowed.",
     repository_runner: Some(run),
     github_runner: None,

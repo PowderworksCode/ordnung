@@ -31,6 +31,21 @@ pub enum CheckStatus {
     Error,
 }
 
+/// Whether a check's findings describe the repository as a whole or one detected
+/// project within it.
+///
+/// A repository-scoped check has one verdict per repository: there is one README,
+/// one default branch, one Dependabot configuration. A project-scoped check reports
+/// per project root, so a monorepository receives one finding per directory. Policy
+/// that selects directories can only apply to the latter, and declaring the scope is
+/// what lets that be validated instead of silently misfiring.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CheckScope {
+    Repository,
+    Project,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CheckCategory {
     RepositoryShape,
@@ -184,6 +199,7 @@ pub struct CheckDefinition {
     pub id: &'static str,
     pub default_severity: Severity,
     pub category: CheckCategory,
+    pub scope: CheckScope,
     pub instructions: &'static str,
     pub repository_runner: Option<RepositoryCheckRunner>,
     pub github_runner: Option<GithubCheckRunner>,
@@ -230,6 +246,28 @@ pub fn default_policy() -> BTreeMap<String, Severity> {
         .collect()
 }
 
+/// One `skip` per applicable check, explaining that the repository is archived.
+fn archived_report(
+    repository: PathBuf,
+    applies: impl Fn(&'static CheckDefinition) -> bool,
+) -> Report {
+    Report {
+        repository,
+        results: check_definitions()
+            .iter()
+            .filter(|definition| applies(definition))
+            .map(|definition| {
+                result(
+                    definition,
+                    CheckStatus::Skip,
+                    PathBuf::new(),
+                    "repository is archived and cannot be changed",
+                )
+            })
+            .collect(),
+    }
+}
+
 pub fn run_repository_checks(root: &Path, inventory: &Inventory) -> Report {
     run_repository_checks_with_repo_config(root, inventory, &RepoConfig::default())
 }
@@ -265,6 +303,24 @@ pub fn run_repository_checks_with_requirements(
     config: &RepoConfig,
     dependencies: &[DependencyRequirement],
 ) -> Report {
+    run_repository_checks_for_state(root, inventory, config, dependencies, false)
+}
+
+/// GitHub refuses writes to an archived repository, and Ordnung refuses to open a
+/// pull request against one, so every finding would be unactionable. Reporting the
+/// state once is more useful than reporting what cannot be fixed.
+pub fn run_repository_checks_for_state(
+    root: &Path,
+    inventory: &Inventory,
+    config: &RepoConfig,
+    dependencies: &[DependencyRequirement],
+    archived: bool,
+) -> Report {
+    if archived {
+        return archived_report(inventory.root.clone(), |definition| {
+            definition.repository_runner.is_some()
+        });
+    }
     let context = RepositoryCheckContext {
         root,
         inventory,
@@ -298,6 +354,11 @@ pub fn run_github_checks_with_settings(
     facts: &GithubRepositoryFacts,
     settings: &GithubSettings,
 ) -> Report {
+    if facts.archived {
+        return archived_report(PathBuf::from(&facts.repository), |definition| {
+            definition.github_runner.is_some()
+        });
+    }
     let context = GithubCheckContext { facts, settings };
     let mut results = Vec::new();
     for definition in check_definitions() {

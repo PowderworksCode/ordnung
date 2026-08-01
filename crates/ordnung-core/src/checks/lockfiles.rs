@@ -1,5 +1,5 @@
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -7,6 +7,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "lockfiles",
     default_severity: Severity::Required,
     category: CheckCategory::Dependencies,
+    scope: CheckScope::Project,
     instructions: "Commit the correct lockfile for every detected package ecosystem.",
     repository_runner: Some(run),
     github_runner: None,

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 use crate::github::GithubValue;
@@ -10,6 +10,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "action-badge",
     default_severity: Severity::Off,
     category: CheckCategory::Documentation,
+    scope: CheckScope::Repository,
     instructions: "For a public repository that publishes a root GitHub Action, link its exact Marketplace listing from the root README.",
     repository_runner: None,
     github_runner: Some(run),

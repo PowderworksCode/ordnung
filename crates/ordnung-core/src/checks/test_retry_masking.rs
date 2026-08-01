@@ -5,7 +5,7 @@ use std::path::Path;
 use entl_codebase::{TestRetrySignal, tool_profile, tool_profiles};
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -13,6 +13,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "test-retry-masking",
     default_severity: Severity::Required,
     category: CheckCategory::CiSafety,
+    scope: CheckScope::Repository,
     instructions: "Do not configure test commands or standard Rust and TypeScript test-runner configuration to rerun failures until they pass.",
     repository_runner: Some(run),
     github_runner: None,

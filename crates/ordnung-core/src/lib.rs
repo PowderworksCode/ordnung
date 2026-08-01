@@ -9,11 +9,12 @@ pub mod plan;
 pub mod profile;
 
 pub use check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckRemediation, CheckResult, CheckStatus,
-    GithubCheckRunner, Report, RepositoryCheckContext, RepositoryCheckRunner, Severity,
-    check_definition, check_definitions, check_ids, default_policy, run_github_checks,
-    run_github_checks_with_settings, run_repository_checks, run_repository_checks_with_config,
-    run_repository_checks_with_repo_config, run_repository_checks_with_requirements,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckRemediation, CheckResult, CheckScope,
+    CheckStatus, GithubCheckRunner, Report, RepositoryCheckContext, RepositoryCheckRunner,
+    Severity, check_definition, check_definitions, check_ids, default_policy, run_github_checks,
+    run_github_checks_with_settings, run_repository_checks, run_repository_checks_for_state,
+    run_repository_checks_with_config, run_repository_checks_with_repo_config,
+    run_repository_checks_with_requirements,
 };
 pub use config::{
     BooleanSettingOverride, BooleanSettingPolicy, CheckPolicy, CiExistsConfig, CodegenConfig,

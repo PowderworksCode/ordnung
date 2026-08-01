@@ -12,7 +12,8 @@ use ordnung_core::{
     InventoryOptions, RemediationPlan, RepoConfig, Report, Severity, apply_file_changes,
     build_remediation_plan, default_policy, inspect_repository, plan_github_settings,
     plan_managed_changes, resolve_github_settings, resolve_policy, run_github_checks_with_settings,
-    run_repository_checks_with_repo_config, run_repository_checks_with_requirements,
+    run_repository_checks_for_state, run_repository_checks_with_repo_config,
+    run_repository_checks_with_requirements,
 };
 use serde::Serialize;
 
@@ -234,11 +235,12 @@ fn instructions(args: InstructionsArgs) -> Result<ExitCode> {
             );
         }
     }
-    let policy = resolve_policy(
-        &default_policy(),
-        fleet.as_ref().map(|fleet| &fleet.policy.checks),
-        &local,
-    )?;
+    // A member's stage can relax checks, so policy is resolved per member.
+    let member_checks = match (&fleet, &args.repo) {
+        (Some(fleet), Some(repo)) => Some(fleet.checks_for(repo)),
+        _ => None,
+    };
+    let policy = resolve_policy(&default_policy(), member_checks.as_ref(), &local)?;
     let github = resolve_github_settings(fleet.as_ref().map(|fleet| &fleet.policy.github), &local)?;
     let managed = fleet
         .iter()
@@ -260,8 +262,13 @@ fn instructions(args: InstructionsArgs) -> Result<ExitCode> {
                 })
         })
         .collect::<Vec<_>>();
+    let stage = match (&fleet, &args.repo) {
+        (Some(fleet), Some(repo)) => Some(fleet.stage_of(repo).as_str()),
+        _ => None,
+    };
     let generated = render(&InstructionContext {
         inventory: &inventory,
+        stage,
         policy: &policy,
         github: &github,
         test_layout: &local.test_layout,
@@ -411,10 +418,18 @@ fn repo_check(args: RepoCheckArgs) -> Result<ExitCode> {
             ignore: config.ignore.clone(),
         },
     )?;
-    let mut local = run_repository_checks_with_repo_config(&args.path, &inventory, &config);
+    // Fetched first: whether the repository is archived decides whether any local
+    // finding is actionable, and archived state is only visible from GitHub.
+    let facts = GhClient::new().fetch_repository(&args.repo)?;
+    let mut local = run_repository_checks_for_state(
+        &args.path,
+        &inventory,
+        &config,
+        &config.dependencies,
+        facts.archived,
+    );
     local.apply_policy(&policy);
 
-    let facts = GhClient::new().fetch_repository(&args.repo)?;
     let mut github = run_github_checks_with_settings(&facts, &settings);
     github.apply_policy(&policy);
     let clean = local.is_clean() && github.is_clean();
@@ -510,6 +525,12 @@ fn fleet(command: FleetCommand) -> Result<ExitCode> {
                     "dependency requirements: {}",
                     config.effective_dependencies().len()
                 );
+                let stages = config
+                    .stage_counts()
+                    .into_iter()
+                    .map(|(stage, count)| format!("{stage} {count}"))
+                    .collect::<Vec<_>>();
+                println!("stages: {}", stages.join(", "));
             }
             Ok(ExitCode::SUCCESS)
         }
@@ -638,7 +659,11 @@ fn github_check_fleet(fleet_toml: &Path, json: bool) -> Result<ExitCode> {
         let outcome = (|| -> Result<Report> {
             let facts = client.fetch_repository(&member.repo)?;
             let local = client.fetch_repo_config(&facts)?;
-            let policy = resolve_policy(&default_policy(), Some(&fleet.policy.checks), &local)?;
+            let policy = resolve_policy(
+                &default_policy(),
+                Some(&fleet.checks_for(&member.repo)),
+                &local,
+            )?;
             let settings = resolve_github_settings(Some(&fleet.policy.github), &local)?;
             let mut report = run_github_checks_with_settings(&facts, &settings);
             report.apply_policy(&policy);
@@ -847,7 +872,11 @@ fn sync_fleet_member(
     client.clone_repository(&facts.repository, &checkout)?;
 
     let local = RepoConfig::load_optional(&checkout)?;
-    let policy = resolve_policy(&default_policy(), Some(&fleet.policy.checks), &local)?;
+    let policy = resolve_policy(
+        &default_policy(),
+        Some(&fleet.checks_for(repository)),
+        &local,
+    )?;
     let settings = resolve_github_settings(Some(&fleet.policy.github), &local)?;
     let inventory = inspect_repository(
         &checkout,
@@ -944,7 +973,7 @@ fn sync_fleet(
     }
 
     let local = RepoConfig::load_optional(repo_root)?;
-    let policy = resolve_policy(&default_policy(), Some(&config.policy.checks), &local)?;
+    let policy = resolve_policy(&default_policy(), Some(&config.checks_for(repo)), &local)?;
     let inventory = inspect_repository(
         repo_root,
         &InventoryOptions {

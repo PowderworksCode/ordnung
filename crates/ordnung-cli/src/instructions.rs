@@ -12,6 +12,8 @@ pub const END_MARKER: &str = "<!-- ordnung:instructions:end -->";
 
 pub struct InstructionContext<'a> {
     pub inventory: &'a Inventory,
+    /// The member's declared stage, when a fleet supplies one.
+    pub stage: Option<&'a str>,
     pub policy: &'a BTreeMap<String, Severity>,
     pub github: &'a GithubSettings,
     pub test_layout: &'a TestLayoutConfig,
@@ -36,6 +38,13 @@ pub fn render(context: &InstructionContext<'_>) -> String {
             "- Policy source: fleet `{fleet_name}` plus explicit local overrides."
         )
         .unwrap();
+        if let Some(stage) = context.stage {
+            writeln!(
+                output,
+                "- Stage: `{stage}`, assigned by the fleet. Some checks are relaxed at this stage."
+            )
+            .unwrap();
+        }
     } else {
         writeln!(
             output,

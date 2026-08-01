@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use entl_codebase::TaskKind;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -12,6 +12,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "ci-exists",
     default_severity: Severity::Required,
     category: CheckCategory::CiSafety,
+    scope: CheckScope::Project,
     instructions: "Keep a push or pull-request workflow with test, lint, and format tasks for every detected language; exempt scratch project paths explicitly with ci_exists.ignore.",
     repository_runner: Some(run),
     github_runner: None,

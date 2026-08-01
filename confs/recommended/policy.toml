@@ -75,3 +75,31 @@ require = ["itertools"]
 name = "typescript-refactoring"
 language = "typescript"
 require = ["remeda", "ts-pattern", "zod"]
+
+# A repository still finding its shape. Committing straight to the default branch
+# is how the work actually happens, and there are no consumers yet to owe a
+# changelog, a licence, or a stable commit convention to.
+#
+# Deliberately small, and deliberately not touching hygiene or security: a secret
+# committed to an incubating repository is just as leaked, and an unpinned Action
+# is just as exploitable. What relaxes here is ceremony.
+#
+# Lives in this tier so that `paranoid` inherits it too. Stage overlays apply after
+# every inherited layer merges, so this holds even where a tier escalated the check.
+[policy.stages.incubating.checks]
+# Pull-request governance, which presumes a pull-request flow exists.
+branch-protection = { severity = "off", allow_override = false }
+required-checks = { severity = "off", allow_override = false }
+strict-status-checks = { severity = "off", allow_override = false }
+ruleset-bypass = { severity = "off", allow_override = false }
+auto-update-pr-branches = { severity = "off", allow_override = false }
+
+# Owed to consumers who do not exist yet.
+changelog = { severity = "off", allow_override = true }
+license = { severity = "recommended", allow_override = true }
+readme-quality = { severity = "off", allow_override = true }
+conventional-commits = { severity = "off", allow_override = true }
+
+# Team process without a team.
+codeowners = { severity = "off", allow_override = true }
+stale = { severity = "off", allow_override = true }

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -9,6 +9,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "project-inventory",
     default_severity: Severity::Required,
     category: CheckCategory::RepositoryShape,
+    scope: CheckScope::Repository,
     instructions: "Keep supported project boundaries and manifests detectable by Ordnung.",
     repository_runner: Some(run),
     github_runner: None,

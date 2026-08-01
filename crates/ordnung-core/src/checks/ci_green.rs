@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 use crate::github::GithubWorkflowFacts;
@@ -10,6 +10,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "ci-green",
     default_severity: Severity::Required,
     category: CheckCategory::CiSafety,
+    scope: CheckScope::Repository,
     instructions: "Keep latest default-branch runs green for active repository-owned workflows.",
     repository_runner: None,
     github_runner: Some(run),

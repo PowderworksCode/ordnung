@@ -5,7 +5,7 @@ use entl_codebase::TaskKind;
 use entl_github::TaskInvocation;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -13,6 +13,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "builds",
     default_severity: Severity::Required,
     category: CheckCategory::BuildToolchain,
+    scope: CheckScope::Project,
     instructions: "Run every declared build, build:* or *:build package target on push or pull requests; Tauri projects also need a change-triggered compile check and a scheduled full build.",
     repository_runner: Some(run),
     github_runner: None,

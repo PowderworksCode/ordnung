@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -9,6 +9,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "reproducible-toolchain",
     default_severity: Severity::Required,
     category: CheckCategory::BuildToolchain,
+    scope: CheckScope::Repository,
     instructions: "Keep GitHub setup-action toolchain inputs off unbounded latest and wildcard versions; explicit versions and bounded stable channels are allowed.",
     repository_runner: Some(run),
     github_runner: None,

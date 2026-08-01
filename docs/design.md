@@ -158,6 +158,56 @@ Merge semantics:
 Each tier extends the one below it, so a tier file is the difference between
 tiers rather than a restatement of the whole check list.
 
+### Repository Stage
+
+A member declares how much it owes the people who use it:
+
+```toml
+[[member]]
+repo = "owner/project"
+stage = "incubating"
+```
+
+`supported` is the default, so omitting the field changes nothing. `incubating`
+means the repository is still finding its shape: committing straight to the default
+branch is how the work happens, and there are no consumers yet owed a changelog,
+a licence, or a stable commit convention.
+
+The stage is the one axis nothing can detect. Visibility, archived state, language,
+ecosystem, and project shape are already facts, and letting a fleet declare those by
+hand would let the declaration drift from reality. Whether a repository is *intended*
+to be supported is not a property of its contents.
+
+It is assigned by the fleet rather than requested by the member, so graduating is a
+reviewable change in one file rather than something a repository grants itself.
+
+A layer supplies severity deltas per stage:
+
+```toml
+[policy.stages.incubating.checks]
+branch-protection = { severity = "off", allow_override = false }
+changelog = { severity = "off", allow_override = true }
+```
+
+The overlay applies after every inherited layer merges, so a stage relaxation holds
+even where a tier escalated the same check. Unknown stage names are configuration
+errors.
+
+A stage relaxes ceremony only. Hygiene and security are never part of it: a secret
+committed to an incubating repository is just as leaked, and an unpinned Action is
+just as exploitable. `lockfiles`, `gitignore`, `pinned-actions`,
+`workflow-permissions`, `secret-scanning`, `builds`, `typecheck`, and `ci-exists`
+stay exactly where they were.
+
+### Archived Repositories
+
+`archived` is a GitHub fact, so it is never declared. GitHub refuses writes to an
+archived repository and Ordnung refuses to open a pull request against one, which
+makes every finding against it unactionable. Both check runners therefore
+short-circuit: each applicable check reports one `skip` explaining the state, and
+the report is clean. Reporting the state once is more useful than reporting what
+cannot be fixed.
+
 ## Repository Inventory
 
 The inventory is a graph rooted at one repository. `PackageInstance` nodes name
@@ -304,6 +354,17 @@ split so each half carries its own severity: `pinned-actions` and
 `test-mirror`. Splitting also makes each position expressible in fleet policy,
 because a severity travels through policy layers while a boolean on a
 repository-local config does not.
+
+Each check also declares a `CheckScope`. A repository-scoped check has one verdict
+per repository: there is one README, one default branch, one Dependabot
+configuration. A project-scoped check reports per project root, so a monorepository
+receives one finding per directory. Any check reading GitHub facts is necessarily
+repository-scoped.
+
+The scope is declared rather than inferred because policy that selects directories
+can only apply to project-scoped checks. Without the declaration, a path-scoped rule
+aimed at `branch-protection` would silently do nothing, which is the worst failure
+mode for a policy file that looks authoritative.
 
 Checks read either repository inventory, parsed repository files, GitHub facts,
 or a declared combination. GitHub access and filesystem access are supplied as

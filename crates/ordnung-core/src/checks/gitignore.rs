@@ -5,7 +5,7 @@ use entl_codebase::CARGO_ECOSYSTEM;
 use ignore::gitignore::GitignoreBuilder;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -13,6 +13,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "gitignore",
     default_severity: Severity::Required,
     category: CheckCategory::RepositoryShape,
+    scope: CheckScope::Project,
     instructions: "Ignore each ecosystem's build junk at every package scope: Cargo requires target/ and Bun, npm, pnpm, and Yarn require node_modules/; applicable ancestor .gitignore files may provide the rule.",
     repository_runner: Some(run),
     github_runner: None,

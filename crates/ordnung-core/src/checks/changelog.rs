@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckRemediation, CheckResult, CheckStatus,
-    RepositoryCheckContext, Severity, registry, result, result_with_remediation,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckRemediation, CheckResult, CheckScope,
+    CheckStatus, RepositoryCheckContext, Severity, registry, result, result_with_remediation,
 };
 
 const CANDIDATES: [&str; 5] = [
@@ -17,6 +17,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "changelog",
     default_severity: Severity::Recommended,
     category: CheckCategory::Documentation,
+    scope: CheckScope::Repository,
     instructions: "Keep a root CHANGELOG.md, CHANGELOG, CHANGELOG.txt, CHANGES.md, or HISTORY.md; format and versioning style are repository choices.",
     repository_runner: Some(run),
     github_runner: None,

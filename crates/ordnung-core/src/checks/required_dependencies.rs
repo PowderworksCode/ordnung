@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -11,6 +11,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "required-dependencies",
     default_severity: Severity::Required,
     category: CheckCategory::Dependencies,
+    scope: CheckScope::Project,
     instructions: "Declare every package the effective policy requires for a project's language or ecosystem; a workspace member may inherit the declaration from its workspace root.",
     repository_runner: Some(run),
     github_runner: None,

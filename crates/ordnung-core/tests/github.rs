@@ -668,3 +668,38 @@ fn stale_reports_idle_pulls_merged_branches_and_cleanup_setting() {
     assert!(stale.message.contains("automatic branch deletion"));
     assert!(stale.message.contains("20 of 25"));
 }
+
+/// GitHub refuses writes to an archived repository and Ordnung refuses to open a
+/// pull request against one, so every finding would be unactionable. The state is
+/// reported once per check instead of as a wall of failures nobody can clear.
+#[test]
+fn an_archived_repository_reports_the_state_instead_of_findings() {
+    let mut facts = facts();
+    // Deliberately broken settings that would otherwise fail loudly.
+    facts.archived = true;
+    facts.branch.strict_status_checks = GithubValue::known(false);
+
+    let report = run_github_checks(&facts);
+    assert!(
+        report.is_clean(),
+        "an archived repository cannot be unclean"
+    );
+    assert!(
+        !report.results.is_empty(),
+        "the archived state should still be visible"
+    );
+    assert!(
+        report
+            .results
+            .iter()
+            .all(|result| result.status == CheckStatus::Skip
+                && result.message.contains("archived")),
+        "every result should skip with the archived reason"
+    );
+    // One result per GitHub-backed check, not per finding.
+    let github_checks = ordnung_core::check_definitions()
+        .iter()
+        .filter(|definition| definition.github_runner.is_some())
+        .count();
+    assert_eq!(report.results.len(), github_checks);
+}

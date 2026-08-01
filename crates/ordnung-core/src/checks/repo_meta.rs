@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 
@@ -9,6 +9,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "repo-meta",
     default_severity: Severity::Recommended,
     category: CheckCategory::RepositoryShape,
+    scope: CheckScope::Repository,
     instructions: "Keep repository description and issue tracking configured.",
     repository_runner: None,
     github_runner: Some(run),

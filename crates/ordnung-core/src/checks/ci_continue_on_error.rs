@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -9,6 +9,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "ci-continue-on-error",
     default_severity: Severity::Required,
     category: CheckCategory::CiSafety,
+    scope: CheckScope::Repository,
     instructions: "Do not let jobs or gating test, lint, format, typecheck, and build steps hide failures with continue-on-error.",
     repository_runner: Some(run),
     github_runner: None,

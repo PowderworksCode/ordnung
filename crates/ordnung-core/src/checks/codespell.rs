@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use entl_codebase::CODESPELL;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -11,6 +11,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "codespell",
     default_severity: Severity::Recommended,
     category: CheckCategory::Documentation,
+    scope: CheckScope::Repository,
     instructions: "Run Codespell from a push or pull-request workflow using its command or registered GitHub Action.",
     repository_runner: Some(run),
     github_runner: None,

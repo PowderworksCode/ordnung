@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 use crate::github::GithubValue;
@@ -10,6 +10,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "auto-update-pr-branches",
     default_severity: Severity::Recommended,
     category: CheckCategory::GithubSafeguards,
+    scope: CheckScope::Repository,
     instructions: "Allow and automate pull-request branch updates when strict checks require freshness.",
     repository_runner: None,
     github_runner: Some(run),

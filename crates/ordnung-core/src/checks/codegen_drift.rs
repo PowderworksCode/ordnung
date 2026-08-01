@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use entl_github::WorkflowCommand;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 use crate::config::CodegenConfig;
@@ -12,6 +12,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "codegen-drift",
     default_severity: Severity::Recommended,
     category: CheckCategory::BuildToolchain,
+    scope: CheckScope::Project,
     instructions: "Declare each committed generator under [[codegen]] with its project root, command, and output patterns; run it in CI and follow it in the same job with git diff --exit-code or git diff --quiet.",
     repository_runner: Some(run),
     github_runner: None,

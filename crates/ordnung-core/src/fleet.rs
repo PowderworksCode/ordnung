@@ -178,6 +178,38 @@ impl FleetConfig {
         &self.resolved_dependencies
     }
 
+    pub fn member(&self, repo: &str) -> Option<&FleetMember> {
+        self.members.iter().find(|member| member.repo == repo)
+    }
+
+    pub fn stage_of(&self, repo: &str) -> Stage {
+        self.member(repo)
+            .map_or(Stage::default(), |member| member.stage)
+    }
+
+    /// Base check policy with the member's stage overlay applied on top.
+    ///
+    /// The overlay is applied after every inherited layer is merged, so a stage
+    /// relaxation holds even against a tier that escalated the same check.
+    pub fn checks_for(&self, repo: &str) -> BTreeMap<String, CheckPolicy> {
+        let mut checks = self.policy.checks.clone();
+        if let Some(stage) = self.policy.stages.get(self.stage_of(repo).as_str()) {
+            for (name, policy) in &stage.checks {
+                checks.insert(name.clone(), policy.clone());
+            }
+        }
+        checks
+    }
+
+    /// Members grouped by stage, for reporting the distribution.
+    pub fn stage_counts(&self) -> BTreeMap<Stage, usize> {
+        let mut counts = BTreeMap::new();
+        for member in &self.members {
+            *counts.entry(member.stage).or_insert(0) += 1;
+        }
+        counts
+    }
+
     pub fn validate(&self, fleet_root: &Path) -> Result<()> {
         if self.name.trim().is_empty() {
             return Err(Error::Config("fleet name cannot be empty".into()));
@@ -204,6 +236,7 @@ impl FleetConfig {
         for requirement in &self.dependencies {
             requirement.validate()?;
         }
+        validate_stage_names(&self.policy)?;
         validate_layer_managed(&self.managed, fleet_root)
     }
 
@@ -270,6 +303,7 @@ impl PolicyLibrary {
         for requirement in &self.dependencies {
             requirement.validate()?;
         }
+        validate_stage_names(&self.policy)?;
         for managed in &self.managed {
             if !managed.only.is_empty() {
                 return Err(Error::Config(format!(
@@ -506,6 +540,12 @@ fn merge_policy(layers: &[Layer]) -> FleetPolicy {
         if let Some(value) = &github.allow_update_branch {
             merged.github.allow_update_branch = Some(value.clone());
         }
+        for (stage, policy) in &layer.policy.stages {
+            let entry = merged.stages.entry(stage.clone()).or_default();
+            for (name, check) in &policy.checks {
+                entry.checks.insert(name.clone(), check.clone());
+            }
+        }
     }
     merged
 }
@@ -545,6 +585,17 @@ fn merge_managed(layers: &[Layer]) -> Result<Vec<ResolvedManaged>> {
     Ok(merged)
 }
 
+fn validate_stage_names(policy: &FleetPolicy) -> Result<()> {
+    for stage in policy.stages.keys() {
+        if !matches!(stage.as_str(), "incubating" | "supported") {
+            return Err(Error::Config(format!(
+                "unknown stage {stage:?} in policy; expected \"incubating\" or \"supported\""
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Merges dependency requirements by name, mirroring managed entries:
 /// a later layer replaces an inherited entry, and `unmanaged` drops it.
 fn merge_dependencies(layers: &[Layer]) -> Result<Vec<DependencyRequirement>> {
@@ -578,6 +629,44 @@ pub struct FleetMember {
     pub repo: String,
     #[serde(default)]
     pub note: String,
+    #[serde(default)]
+    pub stage: Stage,
+}
+
+/// How much a repository owes the people who use it.
+///
+/// This is the one axis nothing can detect: whether a repository is intended to be
+/// supported is not a property of its contents. Visibility, archived state, language,
+/// and project shape are all already facts, and declaring them by hand would let the
+/// declaration drift from reality.
+///
+/// The stage is assigned by the fleet rather than requested by the member, so that
+/// graduating is a reviewable change in one file rather than something a repository
+/// can grant itself.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Stage {
+    /// Still finding its shape. Direct commits to the default branch are how work
+    /// actually happens, and there are no consumers to owe a changelog to.
+    Incubating,
+    /// Someone depends on this.
+    #[default]
+    Supported,
+}
+
+impl Stage {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Incubating => "incubating",
+            Self::Supported => "supported",
+        }
+    }
+}
+
+impl std::fmt::Display for Stage {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_str().fmt(formatter)
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -587,6 +676,16 @@ pub struct FleetPolicy {
     pub checks: BTreeMap<String, CheckPolicy>,
     #[serde(default)]
     pub github: GithubSettingsPolicy,
+    /// Severity deltas applied to members at a given stage, keyed by stage name.
+    #[serde(default)]
+    pub stages: BTreeMap<String, StagePolicy>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StagePolicy {
+    #[serde(default)]
+    pub checks: BTreeMap<String, CheckPolicy>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

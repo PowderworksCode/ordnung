@@ -33,3 +33,25 @@ fn default_policy_comes_from_registered_definitions() {
     assert_eq!(policy["test-inline"], Severity::Off);
     assert_eq!(policy["test-mirror"], Severity::Off);
 }
+
+/// Policy that selects directories can only apply to project-scoped checks, so the
+/// scope must be declared rather than inferred.
+#[test]
+fn every_check_declares_a_scope_and_github_checks_are_repository_scoped() {
+    use ordnung_core::CheckScope;
+    for definition in check_definitions() {
+        if definition.github_runner.is_some() {
+            assert_eq!(
+                definition.scope,
+                CheckScope::Repository,
+                "{} reads GitHub facts, which describe one repository",
+                definition.id
+            );
+        }
+    }
+    let project = check_definitions()
+        .iter()
+        .filter(|definition| definition.scope == CheckScope::Project)
+        .count();
+    assert_eq!(project, 12, "project-scoped checks");
+}

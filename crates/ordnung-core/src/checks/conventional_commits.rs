@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -12,6 +12,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "conventional-commits",
     default_severity: Severity::Recommended,
     category: CheckCategory::RepositoryShape,
+    scope: CheckScope::Repository,
     instructions: "Enforce Conventional Commits in a pull-request or push workflow with a recognized semantic-title action, commitlint, cocogitto, convco, or an explicit failing PR-title validator; mention Conventional Commits in the root README or CONTRIBUTING.md.",
     repository_runner: Some(run),
     github_runner: None,

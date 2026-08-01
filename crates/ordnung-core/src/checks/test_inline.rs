@@ -3,7 +3,7 @@ use std::fs;
 use entl_codebase::language_conventions;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -16,6 +16,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "test-inline",
     default_severity: Severity::Off,
     category: CheckCategory::BuildToolchain,
+    scope: CheckScope::Project,
     instructions: "Keep tests out of source files; move an inline test module under the configured test root.",
     repository_runner: Some(run),
     github_runner: None,

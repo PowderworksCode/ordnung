@@ -3,7 +3,7 @@ use std::path::{Component, Path, PathBuf};
 use entl_codebase::VALE;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -11,6 +11,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "vale",
     default_severity: Severity::Off,
     category: CheckCategory::Documentation,
+    scope: CheckScope::Repository,
     instructions: "Keep a root .vale.ini with an existing relative StylesPath when declared, and run Vale from a push or pull-request workflow.",
     repository_runner: Some(run),
     github_runner: None,

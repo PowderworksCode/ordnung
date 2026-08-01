@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 use crate::github::GithubValue;
@@ -12,6 +12,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "stale",
     default_severity: Severity::Recommended,
     category: CheckCategory::MaintenanceAutomation,
+    scope: CheckScope::Repository,
     instructions: "Keep open pull requests active within 30 days, remove branches already merged into the default branch, and enable automatic branch deletion after merge.",
     repository_runner: None,
     github_runner: Some(run),

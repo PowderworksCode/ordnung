@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 use crate::github::GithubValue;
@@ -10,6 +10,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "branch-protection",
     default_severity: Severity::Required,
     category: CheckCategory::GithubSafeguards,
+    scope: CheckScope::Repository,
     instructions: "Require pull requests and block force pushes and deletion on the default branch.",
     repository_runner: None,
     github_runner: Some(run),

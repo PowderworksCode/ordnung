@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 
@@ -9,6 +9,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "allow-auto-merge",
     default_severity: Severity::Recommended,
     category: CheckCategory::GithubSafeguards,
+    scope: CheckScope::Repository,
     instructions: "Keep GitHub auto-merge equal to the effective github.allow_auto_merge policy; an unmanaged setting is left alone.",
     repository_runner: None,
     github_runner: Some(run),

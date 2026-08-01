@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use entl_github::{DependabotEcosystemProfile, DependabotUpdate, dependabot_ecosystem_profile};
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, RepositoryCheckContext, Severity, registry, result,
 };
 use crate::github::GithubValue;
@@ -13,6 +13,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "dependabot",
     default_severity: Severity::Required,
     category: CheckCategory::Dependencies,
+    scope: CheckScope::Repository,
     instructions: "Keep a valid .github/dependabot.yml version 2 configuration with a scheduled update covering every detected package ecosystem at its owning directory and GitHub Actions at the repository root; directory globs may be used explicitly.",
     repository_runner: Some(run_repository),
     github_runner: Some(run_github),

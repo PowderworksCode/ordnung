@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     GithubCheckContext, Severity, registry, result,
 };
 
@@ -25,6 +25,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "website",
     default_severity: Severity::Off,
     category: CheckCategory::Documentation,
+    scope: CheckScope::Repository,
     instructions: "Keep the repository's GitHub homepage setting pointed at its reachable HTTP(S) website.",
     repository_runner: None,
     github_runner: Some(run_github),

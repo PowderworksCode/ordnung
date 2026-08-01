@@ -4,7 +4,7 @@ use entl_codebase::{Artifact, TAURI_ARTIFACT, artifact_profile};
 use entl_github::{TaskInvocation, Workflow};
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -12,6 +12,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "artifacts-built",
     default_severity: Severity::Recommended,
     category: CheckCategory::BuildToolchain,
+    scope: CheckScope::Project,
     instructions: "Build every detected binary, site bundle, napi-rs addon, and Tauri application in GitHub Actions; run full Tauri builds on a scheduled workflow.",
     repository_runner: Some(run),
     github_runner: None,

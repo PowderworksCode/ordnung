@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -19,6 +19,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "readme-quality",
     default_severity: Severity::Recommended,
     category: CheckCategory::Documentation,
+    scope: CheckScope::Repository,
     instructions: "Keep the root README between 150 and 1,500 words with install/getting-started, usage/docs, contributing, and license sections, and no broken repository-relative Markdown links.",
     repository_runner: Some(run),
     github_runner: None,

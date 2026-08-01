@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::check::{
-    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckStatus,
+    CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
 
@@ -36,6 +36,7 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "stray-files",
     default_severity: Severity::Off,
     category: CheckCategory::RepositoryShape,
+    scope: CheckScope::Repository,
     instructions: "Keep root Markdown and text files conventional or explicitly listed in stray_files.allow; keep working notes under stray_files.notes.",
     repository_runner: Some(run),
     github_runner: None,
