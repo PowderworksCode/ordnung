@@ -18,6 +18,7 @@ mod conventional_commits;
 mod dependabot;
 mod dependabot_automerge;
 mod field_guide;
+mod git_hooks;
 mod gitignore;
 mod license;
 mod lockfiles;

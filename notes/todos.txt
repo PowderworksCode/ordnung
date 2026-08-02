@@ -1,0 +1,207 @@
+ORDNUNG / POWDERWORKS FLEET — HANDOFF NOTES
+Written 2026-08-02, before moving machines.
+
+
+== 0. READ FIRST: WORK THAT WILL NOT TRAVEL ==
+
+Nine files are committed nowhere. Moving machines loses them.
+
+  ordnung/  (8 files) — the whole git-hooks check
+      crates/ordnung-core/src/checks/git_hooks.rs   (new, untracked)
+      crates/ordnung-core/src/checks/mod.rs         (registration)
+      crates/ordnung-core/tests/check.rs            (6 new tests)
+      crates/ordnung-core/tests/check_registration.rs (46 -> 47)
+      confs/recommended/policy.toml                 (git-hooks off)
+      confs/paranoid/policy.toml                    (git-hooks required)
+      docs/design.md                                (Git Hooks section)
+      CHANGELOG.md
+
+  conf/  (1 file)
+      .ordnung/fleet.toml — 7 members (added infact + cowbird),
+      all marked stage = "incubating". This change has now survived
+      two commit rounds without being picked up.
+
+This file is also uncommitted. Commit and push before switching machines.
+
+State at time of writing: 159 tests pass, clippy clean at -D warnings,
+fmt clean. Fleet resolves 7 members / 47 policies / 2 managed entries /
+2 dependency requirements / stages: incubating 7.
+
+
+== 1. OPEN QUESTIONS AWAITING A DECISION ==
+
+1.1 Action reference before v0.1.0.
+    A member workflow must reference the Action somehow. `@main` is a
+    mutable ref, which Ordnung's own `pinned-actions` check rejects as
+    required. Chicken-and-egg with the release. Leaning: tag an early
+    0.1.0-rc so workflows can pin a real revision.
+
+1.2 test-mirror: 262 of 354 local findings (74%).
+    Requiring one test file per source file is the single biggest item
+    on the board. It is allow_override = true, so members can carry a
+    documented exception while the backlog is worked down. Decision
+    needed: work through it, grant exceptions, or reconsider the rule.
+    Note test-inline (the "no inline #[cfg(test)]" half) is only 35
+    findings and is the part originally asked for.
+
+1.3 Promote website/.githooks into conf as managed content?
+    website/.githooks is the only real hooks implementation in the
+    fleet (commit-msg enforcing Conventional Commits, pre-commit
+    running the gate, run-straitjacket helper). Distributing it via
+    conf would fix six of the seven git-hooks failures at once. Not
+    done: hook contents are a content decision, and run-straitjacket
+    assumes straitjacket is on PATH.
+
+1.4 Vale and Stylelint configs.
+    paranoid requires both. No .vale.ini anywhere except website; no
+    Stylelint config anywhere (ordnung/site fails it). Needs a prose
+    style decision before conf can distribute them as managed files.
+
+1.5 Graduation preview.
+    Offered, not approved. `checks_for` already takes a stage, so a
+    `--as-stage supported` flag on check/repo-check would answer "what
+    would this repo fail if promoted today?". Roughly an hour. Matters
+    because incubating is explicitly temporary and nothing currently
+    signals when a repo is ready.
+
+1.6 straitjacket's stage.
+    Marked incubating along with everything else, per "everything is
+    incubating at this point". Confirm that is intended.
+
+
+== 2. DECIDED — DO NOT RELITIGATE ==
+
+- paranoid is the target; incubating is temporary scaffolding.
+- All 7 members are incubating today. Graduating one is a deliberate
+  edit to conf/.ordnung/fleet.toml.
+- Stage is fleet-assigned, never self-declared by a member.
+- conf is private. ordnung, entl, straitjacket, infact, cowbird are
+  public; website is private.
+- Managed-entry override is name-keyed only. Cross-layer collisions
+  between differently named entries stay an error.
+- present / absent / unmanaged are three distinct states.
+- Downstream layers may override anything they inherit; allow_override
+  governs member repositories only.
+- Config lives in .ordnung/ ; the directory is the unit of publication.
+- Built-in defaults are the industry floor (17 required / 21
+  recommended / 7 off). Tool mandates and house conventions belong in
+  a tier, not in defaults.
+- Rust required dependency: itertools. TypeScript: remeda, ts-pattern,
+  zod.
+- repo-check does NOT take --fleet. Member workflows run the fast gate
+  at built-in defaults; conf runs the fleet-aware audit. Reason: conf
+  is private, so --fleet would put FLEET_GITHUB_TOKEN into five public
+  repositories just to perform a read. If member-side fleet awareness
+  is needed later, distribute a fleet-owned policy snapshot as managed
+  content rather than fetching conf.
+
+
+== 3. RELEASE PLAN STATUS ==
+
+  1. Publish the Entl boundary ................ DONE
+     entl e40d011 pushed; ordnung pins it; verified from a fresh clone
+     with --locked. entl HEAD has since moved to 16f0c21; the pin is
+     deliberately behind and ordnung still builds against it.
+
+  2. Initialize the fleet configuration repo .. DONE
+     conf created, renamed from fleet-configuration, private, pushed.
+     Org rename ThePowderworks -> PowderworksCode complete everywhere.
+
+  3. Workflows ................................ NOT STARTED  <-- blocker
+     Zero workflows in all seven repositories. Gates the most: five
+     GitHub checks cannot be evaluated without a PR flow, seven more
+     fail purely for want of a workflow to run in, ci-green needs run
+     history, and conventional-commits wants CI enforcement.
+     Plan: member repos get one fast gate at built-in defaults; conf
+     gets a scheduled fleet-sync-all. Both start disabled.
+
+  4. FLEET_GITHUB_TOKEN ....................... NOT STARTED
+     No secrets on conf. Needs cross-repo read, branch write, PR write.
+     Only conf needs it — see 2. above.
+
+  5. Dogfood and resolve findings ............. NOT STARTED
+     354 local findings under fleet policy, 262 of them test-mirror.
+     Real backlog ~92, largest: test-inline 35, artifacts-built 8,
+     vale 7, codespell 7, ci-exists 7, scripts 6, dependabot 6,
+     field-guide 5. Step 3 clears a large share of these.
+     Plus 24 findings deferred by incubating that return on graduation:
+     conventional-commits and codeowners on nearly everything,
+     changelog on the five newer repos, readme-quality on six,
+     license on conf.
+
+  6. Expand automatic fixes ................... NOT STARTED
+     Still only changelogs and field guides.
+
+  7. Release 0.1.0 ............................ NOT STARTED
+     Version is still 0.0.0 across the workspace.
+
+  Suggested order: commit the nine files -> workflows -> token ->
+  branch protection on ordnung -> graduate ordnung -> repeat.
+
+
+== 4. KNOWN GAPS AND SHARP EDGES ==
+
+- CheckScope is declared on all 47 checks but is not yet consumed by
+  policy. It is groundwork for directory-scoped rules. Without it a
+  path-scoped rule aimed at a repository-scoped check such as
+  branch-protection would silently do nothing.
+
+- Directory-level policy is designed but not built. If it happens:
+  prefer the existing project selector (language / ecosystem /
+  capability) over raw path globs, since paths are brittle under the
+  churn monorepos actually see. Add `path` only as an escape hatch.
+  Do NOT add cascading per-directory config files.
+
+- Check configuration does not travel through fleet policy, only
+  severities do. TestLayoutConfig lives in RepoConfig, so its ignore
+  list and per-language roots are per-repository. This is why
+  scan_inline / require_mirror became two checks rather than staying
+  two booleans.
+
+- Two checks cannot pass on private repos on the free org plan:
+  ruleset-bypass returns HTTP 403, secret-scanning is not offered.
+  Affects conf and website. They skip, so they do not gate.
+
+- ruleset-bypass only passes when a gating ruleset EXISTS and has a
+  bypass actor. With no rulesets it skips forever. Creating them was
+  deliberately deferred until workflows exist, so required status
+  checks can be designed at the same time.
+
+- Demoting a check also demotes its errors. An unreadable GitHub
+  setting on an advisory check no longer makes a report unclean. This
+  is intended; it is documented in design.md.
+
+- Managed entry names are the public interface of a published
+  configuration. Renaming one is a breaking change for importers.
+
+- The Git fetch path for extends requires the server to allow fetching
+  an arbitrary SHA (uploadpack.allowAnySHA1InWant). GitHub allows it;
+  a default-configured self-hosted Git server would reject a pinned
+  fetch. Relevant if outside parties publish confs.
+
+- Cargo cannot fetch git dependencies on this machine without
+  CARGO_NET_GIT_FETCH_WITH_CLI=true, because a global insteadOf rule
+  rewrites https to ssh and ssh-agent holds no identities. Machine
+  quirk, not a repo problem — deliberately not committed as
+  .cargo/config.toml. May or may not apply on the new machine.
+
+- Ordnung fails its own required-dependencies: itertools missing from
+  both crates, remeda and ts-pattern missing from site. Adding four
+  currently-unused dependencies is a deliberate call, not yet made.
+
+- website/.githooks is committed and executable but scripts/dev.sh
+  never sets core.hooksPath, so a fresh clone of website runs no
+  hooks. The local working copy has it set by hand. Two-line fix.
+  This is the finding that validated the new git-hooks check.
+
+
+== 5. LOCAL DEVELOPMENT REMINDERS ==
+
+- Use ./scripts/local_dev for cargo commands while a sibling ../entl
+  checkout exists; it patches in the local Entl without touching the
+  committed lockfile. Plain cargo uses the pinned revision.
+- Full gate: ./scripts/local_dev test --workspace
+             ./scripts/local_dev clippy --workspace --all-targets -- -D warnings
+             ./scripts/local_dev fmt --check
+- Fleet checks: ./target/debug/ordnung fleet check ../conf/.ordnung/fleet.toml
+- infact and cowbird are now fleet members and have remotes.

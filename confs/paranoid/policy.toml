@@ -19,6 +19,12 @@ stylelint = { severity = "required", allow_override = true }
 field-guide = { severity = "required", allow_override = true }
 stray-files = { severity = "required", allow_override = false }
 
+# The CI gate also runs before a commit lands, so a failure surfaces locally
+# instead of after a push. Checked structurally: hooks are committed, executable,
+# and installed by the development script. Whether they are active on a given
+# machine is local state a repository cannot answer for.
+git-hooks = { severity = "required", allow_override = true }
+
 # Presentation and metadata that most repositories legitimately skip.
 website = { severity = "required", allow_override = true }
 action-badge = { severity = "required", allow_override = true }

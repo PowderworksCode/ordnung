@@ -28,6 +28,7 @@ conventional-commits = { severity = "required", allow_override = false }
 dependabot = { severity = "required", allow_override = false }
 dependabot-automerge = { severity = "required", allow_override = true }
 field-guide = { severity = "off", allow_override = true }
+git-hooks = { severity = "off", allow_override = true }
 gitignore = { severity = "required", allow_override = false }
 license = { severity = "required", allow_override = false }
 lockfiles = { severity = "required", allow_override = false }

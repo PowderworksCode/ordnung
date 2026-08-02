@@ -649,6 +649,32 @@ removed. Anchor-only and URI destinations are ignored; absolute paths and
 paths that escape the repository fail. A destination may name either an exact
 file or a directory containing inventoried files.
 
+## Git Hooks
+
+`git-hooks` checks that a repository *provides* hooks and wires them up. It never
+checks that hooks are active: `core.hooksPath` and `.git/hooks` are local machine
+state rather than repository content, and a fleet audit reads a fresh clone where
+the setting is always unset. "Are hooks installed here?" is not a question the
+repository can answer, so it is not asked.
+
+What is structural, and therefore graded:
+
+- Hooks are committed under `.githooks` and named for a client-side Git hook. Other
+  files there are documentation or helpers.
+- Every hook file is executable. Git silently ignores a hook without the execute
+  bit, which is the worst way for a gate to fail: it looks present and never runs.
+- The configured development script sets `core.hooksPath`, so a fresh clone gets
+  the hooks rather than a README instruction to run a command by hand.
+
+A declared hook manager — Husky, Lefthook, pre-commit, `simple-git-hooks`,
+`cargo-husky` — passes instead. Those install through their own lifecycle, so
+requiring the development script to repeat that would be wrong.
+
+The check is off by default and required by the `paranoid` tier, alongside the other
+tool mandates. Its intent is that the fast half of the CI gate also runs before a
+commit lands. Verifying that the hook and CI run the *same* tasks is a further step
+that needs the workflows to exist first.
+
 ## GitHub Action Marketplace
 
 For a public repository with a root `action.yml` or `action.yaml`,

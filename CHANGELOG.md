@@ -4,6 +4,11 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## 2026-08-01
 
+- Added the `git-hooks` check: hooks committed under `.githooks`, every hook file
+  executable, and the development script setting `core.hooksPath`. A declared hook
+  manager passes instead, because it installs through its own lifecycle. Whether
+  hooks are active on a given machine is local state and is deliberately not graded.
+
 - Added a member `stage` of `incubating` or `supported`, with per-stage severity
   deltas under `[policy.stages.<name>.checks]`. The stage is assigned by the fleet,
   not requested by the member, so graduating is a reviewable change in one file. It
