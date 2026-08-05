@@ -11,8 +11,14 @@ of the field guide.
   beside implementation code.
 - Each Ordnung check owns its registration, default severity, instructions, and
   runner in `crates/ordnung-core/src/checks/`.
-- GitHub Actions workflows are intentionally disabled during initial
-  development. Do not restore them merely to clear local Ordnung findings.
+- Every fleet member runs one `gate` job on push and pull request: `cargo fmt
+  --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and
+  `cargo test --workspace`. Actions are pinned by commit SHA because
+  `pinned-actions` is required; Dependabot's `github-actions` ecosystem is what
+  keeps those pins current, so do not replace a SHA with a tag to make an update
+  easier.
+- The toolchain comes from each repository's `rust-toolchain.toml`, not from a
+  setup action. It is 1.97.1 fleet-wide, matching infact.
 - Tool identities and codebase conventions belong in `entl-codebase`; GitHub
   workflow and remote repository facts belong in `entl-github`.
 - Ordnung pins Entl by exact Git revision. For a cross-repository API change,
