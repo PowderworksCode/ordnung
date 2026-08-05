@@ -1,31 +1,39 @@
 ORDNUNG / POWDERWORKS FLEET — HANDOFF NOTES
 Written 2026-08-02, before moving machines.
+Updated 2026-08-05: workflows landed, Dependabot distributed.
 
 
-== 0. READ FIRST: WORK THAT WILL NOT TRAVEL ==
+== 0. CURRENT STATE ==
 
-Nine files are committed nowhere. Moving machines loses them.
+The nine uncommitted files this section used to warn about all landed in
+3d494d1. Nothing is stranded.
 
-  ordnung/  (8 files) — the whole git-hooks check
-      crates/ordnung-core/src/checks/git_hooks.rs   (new, untracked)
-      crates/ordnung-core/src/checks/mod.rs         (registration)
-      crates/ordnung-core/tests/check.rs            (6 new tests)
-      crates/ordnung-core/tests/check_registration.rs (46 -> 47)
-      confs/recommended/policy.toml                 (git-hooks off)
-      confs/paranoid/policy.toml                    (git-hooks required)
-      docs/design.md                                (Git Hooks section)
-      CHANGELOG.md
+Every member now has CI. One `gate` job per repository runs
+`cargo fmt --all --check`, `cargo clippy --workspace --all-targets --
+-D warnings`, and `cargo test --workspace`, on push, pull request, and a
+weekly schedule. Actions are pinned by commit SHA. The toolchain comes
+from each repository's rust-toolchain.toml — 1.97.1 fleet-wide, matching
+infact — rather than from a setup action.
 
-  conf/  (1 file)
-      .ordnung/fleet.toml — 7 members (added infact + cowbird),
-      all marked stage = "incubating". This change has now survived
-      two commit rounds without being picked up.
+Straitjacket, infact, and cowbird build Entl from a sibling checkout, so
+their workflows check the sibling repositories out alongside. Those
+checkouts are unpinned and track default branches, which is a real
+coupling: an Entl change can break their CI with nothing landing in
+them. The weekly schedule exists partly to catch that.
 
-This file is also uncommitted. Commit and push before switching machines.
+Dependabot is fleet-owned as of conf#1, distributed as one glob-driven
+file to every member rather than a file per repository shape.
 
-State at time of writing: 159 tests pass, clippy clean at -D warnings,
-fmt clean. Fleet resolves 7 members / 47 policies / 2 managed entries /
-2 dependency requirements / stages: incubating 7.
+Required findings across the seven members: 22 -> 11. Straitjacket and
+cowbird are at zero. Nothing in the Rust half of the fleet fails
+anything. The 11 that remain are three questions:
+
+  - conf and website have no workflow yet          (4 findings)
+  - ordnung/site and website/site have no lint,
+    format, or test tasks                          (5 findings)
+  - two JavaScript helper directories: entl's
+    providers/typescript and infact's
+    tools/ts-scoreboard                            (2 findings)
 
 
 == 1. OPEN QUESTIONS AWAITING A DECISION ==
@@ -75,8 +83,14 @@ fmt clean. Fleet resolves 7 members / 47 policies / 2 managed entries /
 - All 7 members are incubating today. Graduating one is a deliberate
   edit to conf/.ordnung/fleet.toml.
 - Stage is fleet-assigned, never self-declared by a member.
-- conf is private. ordnung, entl, straitjacket, infact, cowbird are
-  public; website is private.
+- Visibility, as of 2026-08-05: entl and infact are public; ordnung,
+  straitjacket, cowbird, website, and conf are private. This line has
+  drifted before, so check it rather than trusting it.
+  Ordnung going public is a v0.1.0 prerequisite, not a preference: the
+  README documents the shipped tiers as consumed through
+  `[[extends]] git = "https://github.com/PowderworksCode/ordnung"`, and
+  a member workflow referencing the Action needs the same. Neither works
+  against a private repository, for third parties or for conf.
 - Managed-entry override is name-keyed only. Cross-layer collisions
   between differently named entries stay an error.
 - present / absent / unmanaged are three distinct states.
@@ -90,7 +104,7 @@ fmt clean. Fleet resolves 7 members / 47 policies / 2 managed entries /
   zod.
 - repo-check does NOT take --fleet. Member workflows run the fast gate
   at built-in defaults; conf runs the fleet-aware audit. Reason: conf
-  is private, so --fleet would put FLEET_GITHUB_TOKEN into five public
+  is private, so --fleet would put a cross-repository token into member
   repositories just to perform a read. If member-side fleet awareness
   is needed later, distribute a fleet-owned policy snapshot as managed
   content rather than fetching conf.
@@ -107,35 +121,41 @@ fmt clean. Fleet resolves 7 members / 47 policies / 2 managed entries /
      conf created, renamed from fleet-configuration, private, pushed.
      Org rename ThePowderworks -> PowderworksCode complete everywhere.
 
-  3. Workflows ................................ NOT STARTED  <-- blocker
-     Zero workflows in all seven repositories. Gates the most: five
-     GitHub checks cannot be evaluated without a PR flow, seven more
-     fail purely for want of a workflow to run in, ci-green needs run
-     history, and conventional-commits wants CI enforcement.
-     Plan: member repos get one fast gate at built-in defaults; conf
-     gets a scheduled fleet-sync-all. Both start disabled.
+  3. Workflows ................................ DONE (2026-08-04)
+     Five code repositories gained a gate; see section 0. They were
+     enabled rather than started disabled, because four of the five
+     passed the full gate locally before the workflow landed.
+     Not done: conf and website still have no workflow. Website's three
+     remaining findings close together whenever it gets one.
 
   4. FLEET_GITHUB_TOKEN ....................... NOT STARTED
-     No secrets on conf. Needs cross-repo read, branch write, PR write.
-     Only conf needs it — see 2. above.
+     Needs cross-repo read, branch write, PR write. Only conf needs it.
+     Note the interaction with ordnung's visibility: if ordnung is
+     public, conf resolves its inherited policy through a pinned git
+     extends with no token at all, and the token is then needed only for
+     the scheduled fleet-sync-all rather than for reading policy.
 
-  5. Dogfood and resolve findings ............. NOT STARTED
-     354 local findings under fleet policy, 262 of them test-mirror.
-     Real backlog ~92, largest: test-inline 35, artifacts-built 8,
-     vale 7, codespell 7, ci-exists 7, scripts 6, dependabot 6,
-     field-guide 5. Step 3 clears a large share of these.
-     Plus 24 findings deferred by incubating that return on graduation:
-     conventional-commits and codeowners on nearly everything,
-     changelog on the five newer repos, readme-quality on six,
-     license on conf.
+  5. Dogfood and resolve findings ............. IN PROGRESS
+     22 required findings -> 11. Dependabot (6) closed by conf#1.
+     TypeScript fixture findings closed by ignoring **/tests/fixtures/**
+     in entl and infact — those fixtures were being read as projects
+     owing CI tasks, a type layer, and a managed Biome config.
+     The 11 that remain are listed in section 0.
+     Unchanged: test-mirror still dominates the off-severity findings,
+     and the ~24 findings deferred by incubating still return on
+     graduation.
 
   6. Expand automatic fixes ................... NOT STARTED
-     Still only changelogs and field guides.
+     `ordnung fix` reports no automatic remediations for every member.
+     Best first candidate is dependabot.yml: the check already derives
+     every lockfile owner, so it could generate an exact file per
+     repository and retire both the glob and the managed entry.
 
   7. Release 0.1.0 ............................ NOT STARTED
-     Version is still 0.0.0 across the workspace.
+     Version is still 0.0.0 across the workspace. Ordnung going public
+     is a prerequisite — see section 2.
 
-  Suggested order: commit the nine files -> workflows -> token ->
+  Suggested order: publish ordnung -> conf workflow -> token ->
   branch protection on ordnung -> graduate ordnung -> repeat.
 
 
@@ -158,9 +178,10 @@ fmt clean. Fleet resolves 7 members / 47 policies / 2 managed entries /
   scan_inline / require_mirror became two checks rather than staying
   two booleans.
 
-- Two checks cannot pass on private repos on the free org plan:
-  ruleset-bypass returns HTTP 403, secret-scanning is not offered.
-  Affects conf and website. They skip, so they do not gate.
+- Some GitHub-backed checks cannot reach a verdict on every plan and
+  visibility combination. Where the API refuses or the setting is not
+  offered, the check skips with the reason rather than guessing, so it
+  does not gate. Which ones apply depends on the org plan at the time.
 
 - ruleset-bypass only passes when a gating ruleset EXISTS and has a
   bypass actor. With no rulesets it skips forever. Creating them was
