@@ -1,139 +1,250 @@
 # ordnung
 
-Ordnung checks that a GitHub repository is structurally in order and keeps
-fleet-owned configuration synchronized across repositories.
+Ordnung checks that a repository is *structurally* in order — and, across many
+repositories, keeps shared configuration synchronized from one place.
 
-The project is a Rust workspace with two initial crates:
+It does not read your code. It reads what surrounds it: manifests, lockfiles,
+workflows, `.gitignore`, README, CODEOWNERS, Dependabot config, branch
+protection, and the layout those live in.
 
-- `ordnung-core`: recursive project inventory, policy resolution, checks, and
-  deterministic change planning.
-- `ordnung-cli`: standalone repository commands and fleet configuration
-  commands.
+## The problem it solves
 
-Ordnung inspects repository layout, structured manifests, lockfiles,
-configuration, source-file extensions, and workflows. It does not perform
-static code analysis. The local `entl-codebase` dependency walks the repository
-once and produces typed package, project, workspace, lockfile-ownership,
-language, ecosystem, and facet facts. `entl-github` derives workflow, trigger,
-tool, and automation-task facts from that inventory without walking again.
-The two crates own the distributed profiles that Ordnung consumes. Checks use
-the same distributed-registry pattern: each module in
-`ordnung-core/src/checks` owns its ID, default severity, agent instructions, and
-optional runner. The CLI also shells out to authenticated `gh api` calls for
-typed repository, branch, security, and workflow facts. Exact check fixes and
-fleet-managed files are combined into one deterministic plan. The GitHub
-adapter materializes that plan on a reusable `ordnung/remediation` branch and
-opens or updates one pull request per member.
+Every repository accumulates the same small structural debts. A lockfile that
+was never committed. CI that tests but does not typecheck. An Action pinned to
+a tag instead of a SHA. A second package that no Dependabot entry covers.
 
-## Getting Started
+None breaks anything today, none is what a code reviewer looks at, and each is
+invisible until it matters. Across a dozen repositories, nobody knows which are
+in order. Ordnung makes that state checkable, so it can be a CI gate rather than
+an incident postmortem.
 
-Run `./scripts/dev.sh` once after cloning to build the Rust workspace and
-install the documentation site's locked Bun dependencies.
+## What running it looks like
 
-When a sibling `../entl` checkout exists, the development script builds against
-that moving source instead of the pinned Git revision. Run other local Cargo
-commands through the repository's lockfile-preserving `local_dev` command:
+A four-file Rust project — `Cargo.toml`, `src/main.rs`, `README.md`,
+`.gitignore`:
 
-```sh
-./scripts/local_dev test --workspace
-./scripts/local_dev clippy --workspace --all-targets -- -D warnings
+```console
+$ ordnung check .
+fail  recommended artifacts-built        .: compiled binary is not built by any workflow
+fail  recommended changelog              CHANGELOG.md: no root changelog found
+fail  required    ci-exists              .github/workflows: no GitHub Actions workflows found
+pass  recommended ci-scoped              .github/workflows: no heavy pull-request job runs without change scoping
+fail  recommended codeowners             .github/CODEOWNERS: no CODEOWNERS file found in .github, the repository root, or docs
+fail  recommended codespell              .github/workflows: no push or pull-request workflow runs Codespell
+fail  recommended conventional-commits   .github/workflows: no CI enforcement for PR titles or commit messages; Conventional Commits are not mentioned in README or CONTRIBUTING.md
+fail  required    dependabot             .github/dependabot.yml: no .github/dependabot.yml or .github/dependabot.yaml found
+pass  required    gitignore              target: Cargo ignores target/ at .
+fail  recommended license                LICENSE: no root license file found
+fail  required    lockfiles              .: Cargo package has no Cargo.lock at its lockfile owner .
+pass  recommended pinned-dependencies    .: Cargo advisory: 1 floating reference(s): /:serde 1 cargo
+pass  required    project-inventory      .: detected 1 project boundary/boundaries
+pass  required    readme                 README.md: README.md opens with an H1 title
+fail  recommended readme-quality         README.md: under 150 words (5); no install/getting-started section; no usage/docs section; no License section heading; no Contributing section heading
+pass  required    reproducible-toolchain .github/workflows: no GitHub setup action uses an unbounded toolchain version
+fail  recommended scripts                scripts/dev.sh: no scripts/dev.sh to stand up the development environment
+pass  required    test-retry-masking     .: no rerun-until-green test retry is configured
+$ echo $?
+1
 ```
 
-Ordinary `cargo` commands continue to use the exact Entl revision in
-`Cargo.toml`, so standalone clones and CI do not require a sibling repository.
+Four columns: **status**, **severity**, **check ID**, then the **scope** and the
+reason. Every line names the file it is about. Abridged: 15 `skip` and
+`off`-severity lines are omitted; the full run is 33 lines.
 
-Pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/)
-using `type(scope): summary`; CI enforcement will return with the repository's
-workflows.
+The three `required` failures are real: no CI, no Dependabot config, no
+committed `Cargo.lock`.
 
-## Usage
+## Reading the output
 
-```sh
-cargo test --workspace
-cargo run -p ordnung-cli -- inspect .
-cargo run -p ordnung-cli -- check .
-cargo run -p ordnung-cli -- repo-check . --repo PowderworksCode/ordnung
-cargo run -p ordnung-cli -- fix .
-cargo run -p ordnung-cli -- instructions .
-cargo run -p ordnung-cli -- instructions . \
-  --write AGENTS.md --write CLAUDE.md
-cargo run -p ordnung-cli -- fleet check ../conf/.ordnung/fleet.toml
-cargo run -p ordnung-cli -- fleet sync ../conf/.ordnung/fleet.toml \
-  --repo PowderworksCode/ordnung --repo-root .
-cargo run -p ordnung-cli -- github check PowderworksCode/ordnung
-cargo run -p ordnung-cli -- fleet github-check ../conf/.ordnung/fleet.toml
-cargo run -p ordnung-cli -- fleet github-sync-settings \
-  ../conf/.ordnung/fleet.toml --repo PowderworksCode/ordnung
-cargo run -p ordnung-cli -- fleet github-sync \
-  ../conf/.ordnung/fleet.toml --repo PowderworksCode/ordnung
-cargo run -p ordnung-cli -- fleet github-sync-all \
-  ../conf/.ordnung/fleet.toml
-```
+**Status** is `pass`, `fail`, `skip`, or `error`. **Severity** decides what a
+failure costs you:
 
-Mutation commands are dry-run by default. `--apply` writes local exact fixes,
-applies supported GitHub settings, or opens/updates the consolidated
-remediation pull request. JSON responses use a versioned envelope with
-`schema_version`, `command`, `ok`, and `data`. Exit code `0` means clean or
-successfully applied local state, `1` means policy drift, and `2` means an
+| Severity | Meaning | Affects exit code |
+| --- | --- | --- |
+| `required` | Ordnung considers this broken | **yes** |
+| `recommended` | Worth fixing, not a gate | no |
+| `off` | Reported for information only | no |
+
+Exit `0` means no `required` check failed, `1` means policy drift, `2` means an
 operational or configuration error.
 
-## Shipped configuration
+Two things are worth knowing before your first run:
 
-Ordnung ships policy tiers under `confs/`, each consumed through the same
-`[[extends]]` mechanism a third-party configuration uses, so nothing about
-publishing a configuration is special-cased for Ordnung:
+- **`off` checks still run and still print `fail`.** They are opinions Ordnung
+  holds but does not enforce — one test file per source file, a `.vale.ini`,
+  git hooks — and on a large repository they can outnumber the real findings
+  several times over. Filter with `ordnung check --json` on `severity`. A rough
+  edge in the output layer, not a verdict on your repository.
+- **`ordnung check` runs 33 of Ordnung's 47 checks.** The other 14 read GitHub
+  state — branch protection, secret scanning, workflow permissions — and need an
+  API call. Four are `required`. A clean `ordnung check` is not a clean
+  repository; use `repo-check` for that.
 
-| Tier | Intent |
-| --- | --- |
-| built-in defaults | The floor. Close to industry consensus, so a fresh repository gets actionable output. |
-| [`confs/recommended`](confs/recommended) | Stricter practices most teams would accept. Mandates no specific linter. |
-| [`confs/paranoid`](confs/paranoid) | Everything on, including specific tools and Ordnung's own conventions. Extends `recommended`. |
+## Install
 
-```toml
-[[extends]]
-git = "https://github.com/PowderworksCode/ordnung"
-rev = "<full 40-character commit revision>"
-path = "confs/paranoid"
+Builds with a stable Rust toolchain; no system dependencies beyond `git`.
+
+```sh
+cargo install --git https://github.com/PowderworksCode/ordnung ordnung-cli --locked
 ```
 
-A tier extends the one below it, so each file is the difference between tiers
-rather than a restatement of the whole check list.
+From a clone:
 
-Revisions are pinned deliberately: an inherited layer can write files into every
-member repository, so a moving reference would make plans non-deterministic.
+```sh
+git clone https://github.com/PowderworksCode/ordnung
+cd ordnung
+cargo install --path crates/ordnung-cli --locked
+```
+
+The binary is named `ordnung`. Not on crates.io — the name is taken there by an
+unrelated crate.
+
+**Anything touching GitHub also needs the [`gh` CLI](https://cli.github.com/)
+installed and authenticated** (`gh auth login`) — Ordnung shells out to `gh api`
+rather than handling tokens itself. `ORDNUNG_GH` selects a different binary.
+Working-tree-only commands (`check`, `inspect`, `fix`, `instructions`) do not
+need it.
+
+## The three ways to run it
+
+### One repository, locally
+
+```sh
+ordnung inspect .                                  # what Ordnung detected
+ordnung check .                                    # local checks only
+ordnung repo-check . --repo owner/name             # local + GitHub checks
+ordnung fix .                                      # show exact fixes
+ordnung fix . --apply                              # write them
+ordnung instructions . --write AGENTS.md           # agent rules
+```
+
+`fix` is deliberately narrow: it only offers changes it can make exactly,
+without guessing, and says so when it has nothing to offer. `instructions`
+renders a deterministic Markdown block of the checks in force and injects it
+into a marker-delimited region of the files you name, leaving the rest alone.
+
+### In CI, as a GitHub Action
+
+```yaml
+- uses: PowderworksCode/ordnung@<pinned-sha>
+  with:
+    mode: repo-check          # or check, fix, github-check, fleet-check, fleet-sync
+    repository: ${{ github.repository }}
+```
+
+Outputs are `outcome` (`clean`, `drift`, `error`) and `exit-code`;
+`github-token` defaults to `${{ github.token }}`.
+
+> **The Action builds Ordnung from source on every run.** There is no release
+> binary yet, so each invocation runs `cargo install` — expect minutes, not
+> seconds. Set `ORDNUNG_BIN` to an installed binary to skip the build.
+
+### Across a fleet
+
+A fleet manifest names member repositories and the policy they share; see
+[docs/configuration.md](docs/configuration.md) for how layers resolve.
+
+```sh
+ordnung fleet check fleet.toml                 # validate manifest
+ordnung fleet github-check fleet.toml          # audit every member
+ordnung fleet github-sync fleet.toml --repo owner/name
+```
+
+**Every mutating command is dry-run by default and requires `--apply`.** Read
+[Consent and writes](#consent-and-writes) before pointing it at repositories you
+do not own.
+
+## Consent and writes
+
+What Ordnung writes, precisely:
+
+- Without `--apply`, nothing is written anywhere; every command prints its plan.
+- `fix --apply` writes files in the local working tree only.
+- `fleet github-sync --apply` does two things under one flag: it **changes
+  repository settings immediately**, and it pushes a branch and opens a pull
+  request. The settings change is live; the file changes are reviewable.
+- That pull request always uses a branch named **`ordnung/remediation`**, which
+  Ordnung **force-pushes**, re-parented onto the current default branch. Commits
+  pushed to that branch by anyone else are discarded. The name is not
+  configurable.
+- `fleet github-sync-all --apply` does all of the above for every fleet member
+  in one invocation.
+- Archived repositories are refused.
+
+Requires a `gh` login with write access to the targets.
+
+## Configuring
+
+Configuration is optional; the defaults are useful with no config file at all.
+A repository's settings live in `.ordnung/overrides.toml`, and Ordnung ships
+three policy tiers under [`confs/`](confs) — built-in defaults, `recommended`,
+and `paranoid` — each inherited through the same `[[extends]]` mechanism a
+third-party configuration uses.
+
+See [docs/configuration.md](docs/configuration.md) for the resolution order, the
+exception mechanism, and every available key.
+
+## How it works
+
+Ordnung walks the repository exactly once. `entl-codebase` turns that walk into
+typed facts — packages, projects, workspaces, lockfile ownership, languages,
+ecosystems — and `entl-github` derives workflow and tool facts from the same
+inventory. Checks read facts; they never rescan.
+
+Each check is one self-registering module under
+`crates/ordnung-core/src/checks/`, owning its ID, default severity, category,
+scope, agent instructions, and runner. Adding a check means adding one file.
+
+Check fixes and fleet-managed files combine into one deterministic plan before
+anything is written. See [docs/design.md](docs/design.md) for the full contract.
+
+## Ordnung or straitjacket?
+
+Both are CI scanners, and they do not overlap. **Ordnung checks the repository
+around the code** — that CI exists and gates the right things, that lockfiles
+and Dependabot cover every package, that branch protection is on. It never opens
+a source file.
+**[straitjacket](https://github.com/PowderworksCode/straitjacket) checks the
+code itself** for smells and forbidden patterns.
+
+"Is this project set up correctly?" is Ordnung. "Is this code written well?" is
+straitjacket. Running both is normal.
 
 ## Documentation
 
-See [docs/design.md](docs/design.md) for the complete product and architecture
-contract. User-visible project changes are recorded in [CHANGELOG.md](CHANGELOG.md).
+[docs/design.md](docs/design.md) is the complete architecture contract;
+user-visible changes are in [CHANGELOG.md](CHANGELOG.md).
 
-The user documentation site is a static Fumadocs application under `site/`. During local package
-development it consumes `@thepowderworks/fumadocs` from the sibling `../docs` repository:
+The documentation site is a static Fumadocs application under `site/`, consuming
+`@thepowderworks/fumadocs` from the sibling `../docs` repository locally:
 
 ```sh
 (cd ../docs && bun install && bun run build)
 (cd site && bun install && bun run dev)
 ```
 
-Each user-facing page declares a Diátaxis `mode`. `bun run docs:check` reports advisory content
-architecture issues, and `bun run docs:check:strict` is available when the site is ready to make
-the shared contract blocking. The advisory check also runs automatically before a site build.
-
-`ordnung instructions` renders a short deterministic Markdown block containing
-the effective checks and repository conventions for coding agents. Repeated
-`--write` arguments inject or refresh an Ordnung-owned marker block while
-preserving the rest of each file. Fleet-aware generation accepts `--fleet` and
-`--repo` together so centralized policy, GitHub settings, explicit exceptions,
-and effective managed paths are included.
+Each page declares a Diátaxis `mode`; `bun run docs:check` reports content
+issues before a build.
 
 ## Contributing
 
-Use `./scripts/dev.sh` to prepare a checkout, run the workspace tests before
-opening a pull request, and use a Conventional Commit title. Use
-`./scripts/local_dev` while changing local dependencies such as Entl alongside
-Ordnung. Keep checks and their agent instructions together under
-`ordnung-core/src/checks`; integration tests belong under each crate's `tests/`
-directory.
+Run `./scripts/dev.sh` once after cloning. Gates before opening a pull request:
+
+```sh
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+When a sibling `../entl` checkout exists, `./scripts/local_dev <cargo-args>`
+builds against that moving source without rewriting the lockfile. Plain `cargo`
+always uses the Entl revision pinned in `Cargo.toml`, so clones and CI need no
+sibling repository.
+
+Pull request titles follow
+[Conventional Commits](https://www.conventionalcommits.org/). Keep checks and
+their agent instructions together under `crates/ordnung-core/src/checks`;
+integration tests belong under each crate's `tests/` directory.
 
 ## License
 
