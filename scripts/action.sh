@@ -56,7 +56,7 @@ detect_target() {
 # its path. Every failure here is recoverable — the caller builds from source —
 # so this reports why and returns non-zero rather than exiting.
 download_release_binary() {
-  local install_root="$1" ref="${ORDNUNG_ACTION_REF:-}" slug="${ORDNUNG_ACTION_REPOSITORY:-}"
+  local install_root="$1" ref="${ORDNUNG_ACTION_REF:-}" slug="${ORDNUNG_ACTION_SOURCE:-}"
 
   # Only a release tag identifies a published binary. A branch or SHA ref means
   # the consumer is tracking source, so source is what they get.
@@ -65,7 +65,7 @@ download_release_binary() {
     return 1
   fi
   if [[ -z "$slug" ]]; then
-    printf 'ordnung: no action repository to download from; building from source\n' >&2
+    printf 'ordnung: no source repository to download from; building from source\n' >&2
     return 1
   fi
   if ! command -v gh > /dev/null 2>&1; then

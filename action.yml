@@ -58,7 +58,9 @@ runs:
         ORDNUNG_ACTION_APPLY: ${{ inputs.apply }}
         ORDNUNG_ACTION_FORMAT: ${{ inputs.format }}
         # Which release to download a binary from, and from where. A tag ref gets
-        # the published binary; a branch or SHA ref builds from source.
+        # the published binary; a branch or SHA ref builds from source. This is
+        # the repository the Action itself came from, which is not the repository
+        # being audited above. It is empty for a local `uses: ./` action.
         ORDNUNG_ACTION_REF: ${{ github.action_ref }}
-        ORDNUNG_ACTION_REPOSITORY: ${{ github.action_repository }}
+        ORDNUNG_ACTION_SOURCE: ${{ github.action_repository }}
       run: '"${{ github.action_path }}/scripts/action.sh"'

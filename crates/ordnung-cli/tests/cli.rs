@@ -700,7 +700,7 @@ fn the_action_runs_the_released_binary_when_one_matches() {
         &target,
         &[
             ("ORDNUNG_ACTION_REF", "v1.2.3"),
-            ("ORDNUNG_ACTION_REPOSITORY", "PowderworksCode/ordnung"),
+            ("ORDNUNG_ACTION_SOURCE", "PowderworksCode/ordnung"),
         ],
     );
 
@@ -733,7 +733,7 @@ fn the_action_builds_from_source_when_no_release_applies() {
         &current_release_target(),
         &[
             ("ORDNUNG_ACTION_REF", "main"),
-            ("ORDNUNG_ACTION_REPOSITORY", "PowderworksCode/ordnung"),
+            ("ORDNUNG_ACTION_SOURCE", "PowderworksCode/ordnung"),
         ],
     );
 
@@ -781,7 +781,7 @@ exit 0
         &current_release_target(),
         &[
             ("ORDNUNG_ACTION_REF", "v1.2.3"),
-            ("ORDNUNG_ACTION_REPOSITORY", "PowderworksCode/ordnung"),
+            ("ORDNUNG_ACTION_SOURCE", "PowderworksCode/ordnung"),
         ],
     );
 

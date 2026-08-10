@@ -46,7 +46,9 @@ In order:
 2. **A published release binary**, when the Action is pinned to a tag matching
    `vMAJOR.MINOR.PATCH` and a release asset exists for the runner's platform. The
    asset is downloaded with `gh`, and its `.sha256` is verified before it runs; a
-   mismatch falls through rather than executing the file.
+   mismatch falls through rather than executing the file. The release is fetched
+   from the repository the Action came from, which is not the `repository` input
+   being audited.
 3. **A source build**, `cargo install --locked`. This takes minutes.
 
 Every failure in step 2 is recoverable and reports why on stderr, so pinning to
