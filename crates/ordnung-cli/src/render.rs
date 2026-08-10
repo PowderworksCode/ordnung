@@ -44,30 +44,108 @@ pub fn severity_name(severity: Severity) -> &'static str {
     }
 }
 
-/// Drops `off`-severity findings unless the caller asked for everything.
+/// The lowest severity worth printing.
 ///
-/// A check at severity `off` still runs — severity is resolved from policy after
-/// the fact — but it is an opinion the effective policy has switched off.
-/// Printing it as `fail` beside a real failure is what made a first run read as
-/// dozens of problems when there were a handful.
+/// `off` findings still run — severity is resolved from policy after the fact —
+/// but printing them as `fail` beside a real failure is what made a first run
+/// read as dozens of problems when there were a handful. The floor defaults to
+/// `recommended`, which excludes them.
 ///
-/// Exit codes are unaffected: only `required` findings gate those, and an `off`
-/// finding is never `required`.
-pub fn retain_reported(report: &mut Report, all: bool) {
-    if !all {
-        report
-            .results
-            .retain(|result| result.severity != Severity::Off);
+/// Exit codes are unaffected by the floor: only `required` findings gate those.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SeverityFloor {
+    Required,
+    Recommended,
+    All,
+}
+
+impl SeverityFloor {
+    fn admits(self, severity: Severity) -> bool {
+        match self {
+            Self::All => true,
+            Self::Recommended => severity != Severity::Off,
+            Self::Required => severity == Severity::Required,
+        }
     }
 }
 
-/// How many findings `retain_reported` would drop.
-pub fn disabled_count(report: &Report) -> usize {
+pub fn retain_reported(report: &mut Report, floor: SeverityFloor) {
+    report
+        .results
+        .retain(|result| floor.admits(result.severity));
+}
+
+/// How many findings a given floor would drop.
+pub fn hidden_count(report: &Report, floor: SeverityFloor) -> usize {
     report
         .results
         .iter()
-        .filter(|result| result.severity == Severity::Off)
+        .filter(|result| !floor.admits(result.severity))
         .count()
+}
+
+/// The closing line of a human-readable run: what was checked, what it found,
+/// and why the exit code is what it is.
+///
+/// Without this the output simply stopped, and answering "did this pass?" meant
+/// scrolling back and reading every line.
+pub struct Summary {
+    pub shown: usize,
+    pub hidden: usize,
+    pub pass: usize,
+    pub fail: usize,
+    pub skip: usize,
+    pub error: usize,
+    pub required_failures: usize,
+}
+
+/// Counts the reported findings; `hidden` and `required_failures` are counted
+/// from the unfiltered report, so the summary describes the whole run.
+pub fn summarize(reported: &[&Report], hidden: usize, required_failures: usize) -> Summary {
+    let results = || reported.iter().flat_map(|report| report.results.iter());
+    let count = |wanted: CheckStatus| results().filter(|result| result.status == wanted).count();
+    Summary {
+        shown: results().count(),
+        hidden,
+        pass: count(CheckStatus::Pass),
+        fail: count(CheckStatus::Fail),
+        skip: count(CheckStatus::Skip),
+        error: count(CheckStatus::Error),
+        required_failures,
+    }
+}
+
+impl Summary {
+    pub fn line(&self) -> String {
+        let mut parts = Vec::new();
+        for (count, label) in [
+            (self.pass, "pass"),
+            (self.fail, "fail"),
+            (self.skip, "skip"),
+            (self.error, "error"),
+        ] {
+            if count > 0 {
+                parts.push(format!("{count} {label}"));
+            }
+        }
+        let hidden = match self.hidden {
+            0 => String::new(),
+            count => format!(" ({count} hidden, see --all)"),
+        };
+        let verdict = match self.required_failures {
+            0 => "no required failures (exit 0)".to_string(),
+            1 => "1 required failure (exit 1)".to_string(),
+            count => format!("{count} required failures (exit 1)"),
+        };
+        // "results", not "checks": one check reports once per project or per file,
+        // so 47 checks routinely produce many more findings than that.
+        format!(
+            "{} result{}{hidden}: {} — {verdict}",
+            self.shown,
+            if self.shown == 1 { "" } else { "s" },
+            parts.join(", "),
+        )
+    }
 }
 
 /// The checks `ordnung check` cannot run, because they read GitHub state rather

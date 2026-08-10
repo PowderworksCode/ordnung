@@ -43,13 +43,14 @@ fail  recommended readme-quality         README.md: under 150 words (5); no inst
 pass  required    reproducible-toolchain .github/workflows: no GitHub setup action uses an unbounded toolchain version
 fail  recommended scripts                scripts/dev.sh: no scripts/dev.sh to stand up the development environment
 pass  required    test-retry-masking     .: no rerun-until-green test retry is configured
+26 results (7 hidden, see --all): 7 pass, 11 fail, 8 skip — 3 required failures (exit 1)
 note: 12 GitHub-backed checks did not run, 4 of them required. Run `ordnung repo-check . --repo owner/name` for the full audit.
 $ echo $?
 1
 ```
 
-Four columns: **status**, **severity**, **check ID**, then the **scope** and the
-reason. Eight `skip` lines are omitted here.
+Four columns: **status**, **severity**, **check ID**, then **scope** and reason.
+Eight `skip` lines are omitted here.
 
 The three `required` failures are real: no CI, no Dependabot config, no
 committed `Cargo.lock`.
@@ -65,15 +66,16 @@ costs you:
 | `recommended` | Worth fixing, not a gate | no | yes |
 | `off` | Switched off by the effective policy | no | no, use `--all` |
 
-Exit `0` means no `required` check failed, `1` means policy drift, `2` means an
-operational or configuration error.
+Exit `0` means no `required` check failed, `1` policy drift, `2` an operational
+error. Every run ends with a summary saying which. `--severity required` narrows
+the report without changing the verdict.
 
 Two things are worth knowing before your first run:
 
 - **`off` checks are hidden.** They are opinions Ordnung holds but does not
   enforce — one test file per source file, a `.vale.ini`, git hooks. They still
-  run, so raising one to `required` needs no other change, but they are not
-  reported unless you pass `--all`.
+  run, so raising one to `required` needs no other change, but go unreported
+  unless you pass `--all`.
 - **`ordnung check` runs 33 of Ordnung's 47 checks.** The other 14 read GitHub
   state — branch protection, secret scanning, workflow permissions — and need an
   API call. Four are `required`, so a clean `check` is not a clean repository —
@@ -94,13 +96,12 @@ git clone https://github.com/PowderworksCode/ordnung
 cd ordnung && cargo install --path crates/ordnung-cli --locked
 ```
 
-The binary is named `ordnung`. Not on crates.io — that name is taken by an
-unrelated crate.
+The binary is named `ordnung`. Not on crates.io — that name is taken.
 
 **Anything touching GitHub also needs the [`gh` CLI](https://cli.github.com/)
 installed and authenticated** (`gh auth login`) — Ordnung shells out to `gh api`
-rather than handling tokens itself. `ORDNUNG_GH` selects a different binary.
-`check`, `inspect`, `fix`, and `instructions` do not need it.
+rather than handling tokens. `ORDNUNG_GH` selects a different binary. `check`,
+`inspect`, `fix`, and `instructions` do not need it.
 
 ## The three ways to run it
 
@@ -115,10 +116,9 @@ ordnung fix . --apply                              # write them
 ordnung instructions . --write AGENTS.md           # agent rules
 ```
 
-`fix` is deliberately narrow: it only offers changes it can make exactly, and
-says so when it has nothing to offer. `instructions` renders a deterministic
-Markdown block of the checks in force and injects it into a marker-delimited
-region of the files you name, leaving the rest alone.
+`fix` is deliberately narrow: it only offers changes it can make exactly.
+`instructions` renders a deterministic Markdown block of the checks in force
+into a marker-delimited region of the files you name, leaving the rest alone.
 
 ### In CI, as a GitHub Action
 
@@ -139,7 +139,7 @@ defaults to `${{ github.token }}`.
 ### Across a fleet
 
 A fleet manifest names member repositories and the policy they share; see
-[docs/configuration.md](docs/configuration.md) for how layers resolve.
+[docs/configuration.md](docs/configuration.md) for layer resolution.
 
 ```sh
 ordnung fleet check fleet.toml                 # validate manifest
@@ -168,15 +168,14 @@ What Ordnung writes, precisely:
   in one invocation.
 - Archived repositories are refused.
 
-Requires a `gh` login with write access to the targets.
+Requires a `gh` login with write access.
 
 ## Configuring
 
-Configuration is optional; the defaults are useful with no config file at all.
-A repository's settings live in `.ordnung/overrides.toml`, and Ordnung ships
-three policy tiers under [`confs/`](confs) — built-in defaults, `recommended`,
-and `paranoid` — each inherited through the same `[[extends]]` mechanism a
-third-party configuration uses.
+Configuration is optional; the defaults work with no config file. A repository's
+settings live in `.ordnung/overrides.toml`, and Ordnung ships three policy tiers
+under [`confs/`](confs) — built-in defaults, `recommended`, `paranoid` — each
+inherited through the same `[[extends]]` mechanism third parties use.
 
 See [docs/configuration.md](docs/configuration.md) for the resolution order, the
 exception mechanism, and every available key.
@@ -213,15 +212,14 @@ straitjacket. Running both is normal.
 user-visible changes are in [CHANGELOG.md](CHANGELOG.md).
 
 The documentation site is a static Fumadocs application under `site/`, consuming
-`@thepowderworks/fumadocs` from the sibling `../docs` repository locally:
+`@thepowderworks/fumadocs` from the sibling `../docs` repository:
 
 ```sh
 (cd ../docs && bun install && bun run build)
 (cd site && bun install && bun run dev)
 ```
 
-Each page declares a Diátaxis `mode`; `bun run docs:check` reports content
-issues before a build.
+Each page declares a Diátaxis `mode`; `bun run docs:check` runs before a build.
 
 ## Contributing
 

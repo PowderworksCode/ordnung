@@ -4,6 +4,15 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- Human-readable runs now end with a summary: how many results were reported,
+  how many were withheld, the pass/fail/skip breakdown, the number of required
+  failures, and the exit code that follows from it. Answering "did this pass?"
+  no longer means scrolling back through every line.
+- Added `--severity <required|recommended|off>` to `check`, `repo-check`, and
+  `github check`, reporting only findings at that severity or above. It is a
+  display floor and never moves the exit code. It conflicts with `--all`, which
+  remains the shorthand for `--severity off`.
+
 - `check` now says which checks it could not reach. It runs the local checks
   only; the GitHub-backed ones need an API call, and several are `required`, so a
   clean `check` never meant the repository was in order. The run ends with a note
