@@ -17,6 +17,7 @@ entl-codebase = { git = "https://github.com/PowderworksCode/entl", rev = "e40d01
 entl-github = { git = "https://github.com/PowderworksCode/entl", rev = "e40d0116d09074a8e6e86af16cc4fc30ade936e6" }
 globset = "0.4.19"
 ignore = "0.4.31"
+libc = "0.2.189"
 profile-inventory = { package = "inventory", version = "0.3.24" }
 pulldown-cmark = "0.13.4"
 serde = { version = "1.0.229", features = ["derive"] }

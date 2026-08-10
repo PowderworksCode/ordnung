@@ -428,3 +428,55 @@ fn json_output_hides_disabled_checks_too() {
         "--all restores them in JSON too"
     );
 }
+
+/// `ordnung check | head` used to die with a Rust panic and exit 101, which is
+/// the first thing anyone does with output this long.
+///
+/// The fixture is deliberately large: a closed pipe only yields `EPIPE` once the
+/// writer outruns the 64 KiB pipe buffer, so a handful of findings would let this
+/// pass whether the fix is present or not.
+#[cfg(unix)]
+#[test]
+fn a_closed_pipe_ends_the_process_quietly() {
+    let repo = tempfile::tempdir().unwrap();
+    fs::create_dir_all(repo.path().join("src")).unwrap();
+    fs::write(
+        repo.path().join("Cargo.toml"),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n",
+    )
+    .unwrap();
+    fs::write(repo.path().join("src/main.rs"), "fn main() {}\n").unwrap();
+    // One `test-mirror` finding per file, taking the output well past the buffer.
+    for index in 0..900 {
+        fs::write(
+            repo.path().join(format!("src/m{index}.rs")),
+            format!("pub fn f{index}() {{}}\n"),
+        )
+        .unwrap();
+    }
+
+    let quote = |value: &str| value.replace('\'', "'\\''");
+    let piped = Command::new("sh")
+        .arg("-c")
+        .arg(format!(
+            "'{}' check '{}' --all | head -1",
+            quote(env!("CARGO_BIN_EXE_ordnung")),
+            quote(repo.path().to_str().unwrap()),
+        ))
+        .output()
+        .unwrap();
+
+    let stderr = String::from_utf8_lossy(&piped.stderr);
+    assert!(
+        !stderr.contains("panicked"),
+        "a closed pipe must not panic, got: {stderr}"
+    );
+    assert!(
+        !stderr.contains("Broken pipe"),
+        "a closed pipe must not be reported as an error, got: {stderr}"
+    );
+    assert!(
+        !String::from_utf8_lossy(&piped.stdout).is_empty(),
+        "the reader still gets its line"
+    );
+}

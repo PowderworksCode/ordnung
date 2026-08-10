@@ -217,7 +217,25 @@ enum FleetCommand {
     },
 }
 
+/// Rust masks `SIGPIPE` at startup so a closed pipe surfaces as a write error
+/// instead of killing the process. Nothing here handles that error — `println!`
+/// panics on it — so `ordnung check | head` died with a panic message and exit
+/// 101. Restoring the default disposition makes a closed pipe end the process
+/// quietly, the way every other command-line tool behaves.
+#[cfg(unix)]
+fn restore_default_sigpipe() {
+    // SAFETY: called once, on the main thread, before any output or any thread is
+    // spawned. Resetting a disposition to `SIG_DFL` touches no memory Rust owns.
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
+}
+
+#[cfg(not(unix))]
+fn restore_default_sigpipe() {}
+
 fn main() -> ExitCode {
+    restore_default_sigpipe();
     match run() {
         Ok(code) => code,
         Err(error) => {

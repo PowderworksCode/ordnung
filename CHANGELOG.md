@@ -4,6 +4,11 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- A closed pipe no longer panics. `ordnung check | head` died with a Rust panic
+  and exit 101; Ordnung now restores the default `SIGPIPE` disposition at startup,
+  so a reader that stops early ends the process quietly the way every other
+  command-line tool does.
+
 - Checks the effective policy has switched `off` are no longer reported. They
   still run, so raising one to `required` needs no other change, but a first run
   against a repository now shows what Ordnung enforces rather than everything it
