@@ -1,4 +1,3 @@
-use std::fmt::Write as _;
 use std::fs;
 use std::path::Component;
 use std::path::{Path, PathBuf};
@@ -8,17 +7,20 @@ use anyhow::{Context, Result, bail};
 use clap::{Args, Parser, Subcommand};
 use ordnung_core::fleet::RelativeTo;
 use ordnung_core::{
-    CheckStatus, DependencyRequirement, FileChangeSource, FileOperation, FleetConfig, Inventory,
-    InventoryOptions, RemediationPlan, RepoConfig, Report, Severity, apply_file_changes,
-    build_remediation_plan, default_policy, inspect_repository, plan_github_settings,
-    plan_managed_changes, resolve_github_settings, resolve_policy, run_github_checks_with_settings,
+    FileChangeSource, FleetConfig, Inventory, InventoryOptions, RemediationPlan, RepoConfig,
+    Report, apply_file_changes, build_remediation_plan, default_policy, inspect_repository,
+    plan_github_settings, resolve_github_settings, resolve_policy, run_github_checks_with_settings,
     run_repository_checks_for_state, run_repository_checks_with_repo_config,
-    run_repository_checks_with_requirements,
 };
 use serde::Serialize;
 
-use ordnung_cli::gh::{GhClient, PullRequestMaterialization};
+use ordnung_cli::gh::GhClient;
 use ordnung_cli::instructions::{InstructionContext, inject, render};
+use ordnung_cli::render::{display_scope, file_operation_name, severity_name, status_name};
+use ordnung_cli::sync::{
+    GithubSyncOutcome, check_fleet_members, ensure_explicit_member, plan_fleet_member_settings,
+    plan_local_sync, sync_fleet_member, sync_fleet_members,
+};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -641,47 +643,9 @@ fn github(command: GithubCommand) -> Result<ExitCode> {
     }
 }
 
-#[derive(Serialize)]
-struct FleetGithubOutcome {
-    repository: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    report: Option<Report>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-}
-
 fn github_check_fleet(fleet_toml: &Path, json: bool) -> Result<ExitCode> {
     let fleet = FleetConfig::load(fleet_toml)?;
-    let client = GhClient::new();
-    let mut outcomes = Vec::new();
-
-    for member in &fleet.members {
-        let outcome = (|| -> Result<Report> {
-            let facts = client.fetch_repository(&member.repo)?;
-            let local = client.fetch_repo_config(&facts)?;
-            let policy = resolve_policy(
-                &default_policy(),
-                Some(&fleet.checks_for(&member.repo)),
-                &local,
-            )?;
-            let settings = resolve_github_settings(Some(&fleet.policy.github), &local)?;
-            let mut report = run_github_checks_with_settings(&facts, &settings);
-            report.apply_policy(&policy);
-            Ok(report)
-        })();
-        outcomes.push(match outcome {
-            Ok(report) => FleetGithubOutcome {
-                repository: report.repository.display().to_string(),
-                report: Some(report),
-                error: None,
-            },
-            Err(error) => FleetGithubOutcome {
-                repository: member.repo.clone(),
-                report: None,
-                error: Some(format!("{error:#}")),
-            },
-        });
-    }
+    let outcomes = check_fleet_members(&GhClient::new(), &fleet);
 
     let clean = outcomes.iter().all(|outcome| {
         outcome.error.is_none()
@@ -719,23 +683,9 @@ fn github_sync_fleet_settings(
     json: bool,
 ) -> Result<ExitCode> {
     let fleet = FleetConfig::load(fleet_toml)?;
-    if !fleet.members.iter().any(|member| member.repo == repository) {
-        bail!(
-            "repository {repository:?} is not an explicit member of fleet {:?}",
-            fleet.name
-        );
-    }
+    ensure_explicit_member(&fleet, repository)?;
     let client = GhClient::new();
-    let facts = client.fetch_repository(repository)?;
-    if facts.archived {
-        bail!(
-            "repository {:?} is archived and cannot be changed",
-            facts.repository
-        );
-    }
-    let local = client.fetch_repo_config(&facts)?;
-    let desired = resolve_github_settings(Some(&fleet.policy.github), &local)?;
-    let changes = plan_github_settings(&facts, &desired);
+    let (facts, changes) = plan_fleet_member_settings(&client, &fleet, repository)?;
     if apply {
         client.apply_setting_changes(&facts.repository, &changes)?;
     }
@@ -748,15 +698,6 @@ fn github_sync_fleet_settings(
     })
 }
 
-#[derive(Serialize)]
-struct GithubSyncOutcome {
-    ok: bool,
-    plan: RemediationPlan,
-    applied: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pull_request: Option<PullRequestMaterialization>,
-}
-
 fn github_sync_fleet(
     fleet_toml: &Path,
     repository: &str,
@@ -764,12 +705,7 @@ fn github_sync_fleet(
     json: bool,
 ) -> Result<ExitCode> {
     let fleet = FleetConfig::load(fleet_toml)?;
-    if !fleet.members.iter().any(|member| member.repo == repository) {
-        bail!(
-            "repository {repository:?} is not an explicit member of fleet {:?}",
-            fleet.name
-        );
-    }
+    ensure_explicit_member(&fleet, repository)?;
     let outcome = sync_fleet_member(&GhClient::new(), &fleet, repository, apply)?;
     if json {
         print_json("fleet-github-sync", outcome.ok, &outcome)?;
@@ -783,35 +719,9 @@ fn github_sync_fleet(
     })
 }
 
-#[derive(Serialize)]
-struct FleetGithubSyncMemberOutcome {
-    repository: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    outcome: Option<GithubSyncOutcome>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-}
-
 fn github_sync_fleet_all(fleet_toml: &Path, apply: bool, json: bool) -> Result<ExitCode> {
     let fleet = FleetConfig::load(fleet_toml)?;
-    let client = GhClient::new();
-    let mut members = Vec::with_capacity(fleet.members.len());
-    for member in &fleet.members {
-        members.push(
-            match sync_fleet_member(&client, &fleet, &member.repo, apply) {
-                Ok(outcome) => FleetGithubSyncMemberOutcome {
-                    repository: member.repo.clone(),
-                    outcome: Some(outcome),
-                    error: None,
-                },
-                Err(error) => FleetGithubSyncMemberOutcome {
-                    repository: member.repo.clone(),
-                    outcome: None,
-                    error: Some(format!("{error:#}")),
-                },
-            },
-        );
-    }
+    let members = sync_fleet_members(&GhClient::new(), &fleet, apply);
     let has_errors = members.iter().any(|member| member.error.is_some());
     let clean = members.iter().all(|member| {
         member.error.is_none() && member.outcome.as_ref().is_some_and(|outcome| outcome.ok)
@@ -834,103 +744,6 @@ fn github_sync_fleet_all(fleet_toml: &Path, apply: bool, json: bool) -> Result<E
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
-    })
-}
-
-/// Fleet requirements override same-named local ones, so a member cannot quietly
-/// drop a requirement the fleet imposes, but may add requirements of its own.
-fn fleet_requirements(local: &RepoConfig, fleet: &FleetConfig) -> Vec<DependencyRequirement> {
-    let mut merged = local.dependencies.clone();
-    for requirement in fleet.effective_dependencies() {
-        match merged
-            .iter()
-            .position(|candidate| candidate.name == requirement.name)
-        {
-            Some(index) => merged[index] = requirement.clone(),
-            None => merged.push(requirement.clone()),
-        }
-    }
-    merged
-}
-
-fn sync_fleet_member(
-    client: &GhClient,
-    fleet: &FleetConfig,
-    repository: &str,
-    apply: bool,
-) -> Result<GithubSyncOutcome> {
-    let facts = client.fetch_repository(repository)?;
-    if facts.archived {
-        bail!(
-            "repository {:?} is archived and cannot be changed",
-            facts.repository
-        );
-    }
-
-    let temporary = tempfile::tempdir().context("cannot create temporary checkout directory")?;
-    let checkout = temporary.path().join("repository");
-    client.clone_repository(&facts.repository, &checkout)?;
-
-    let local = RepoConfig::load_optional(&checkout)?;
-    let policy = resolve_policy(
-        &default_policy(),
-        Some(&fleet.checks_for(repository)),
-        &local,
-    )?;
-    let settings = resolve_github_settings(Some(&fleet.policy.github), &local)?;
-    let inventory = inspect_repository(
-        &checkout,
-        &InventoryOptions {
-            ignore: local.ignore.clone(),
-        },
-    )?;
-    let mut repository_report = run_repository_checks_with_requirements(
-        &checkout,
-        &inventory,
-        &local,
-        &fleet_requirements(&local, fleet),
-    );
-    repository_report.apply_policy(&policy);
-    let mut github_report = run_github_checks_with_settings(&facts, &settings);
-    github_report.apply_policy(&policy);
-
-    let managed_changes =
-        plan_managed_changes(repository, &checkout, &inventory, fleet.effective_managed())?;
-    let setting_changes = plan_github_settings(&facts, &settings);
-    let plan = build_remediation_plan(
-        facts.repository.clone(),
-        &[repository_report, github_report],
-        &managed_changes,
-        setting_changes,
-    )?;
-
-    let pull_request = if apply {
-        client.apply_setting_changes(&facts.repository, &plan.github_setting_changes)?;
-        client.materialize_pull_request(
-            &facts.repository,
-            &facts.default_branch,
-            &plan.file_changes,
-            "chore: apply Ordnung remediations",
-            &pull_request_body(&plan),
-        )?
-    } else {
-        None
-    };
-    let has_file_drift = !plan.file_changes.is_empty();
-    let has_unapplied_setting_drift = !apply && !plan.github_setting_changes.is_empty();
-    let has_required_findings = plan.findings.iter().any(|finding| {
-        finding.severity == Severity::Required
-            && matches!(
-                finding.status,
-                ordnung_core::CheckStatus::Fail | ordnung_core::CheckStatus::Error
-            )
-    });
-    let clean = !has_file_drift && !has_unapplied_setting_drift && !has_required_findings;
-    Ok(GithubSyncOutcome {
-        ok: clean,
-        plan,
-        applied: apply,
-        pull_request,
     })
 }
 
@@ -965,31 +778,8 @@ fn sync_fleet(
     json: bool,
 ) -> Result<ExitCode> {
     let config = FleetConfig::load(fleet_toml)?;
-    if !config.members.iter().any(|member| member.repo == repo) {
-        bail!(
-            "repository {repo:?} is not an explicit member of fleet {:?}",
-            config.name
-        );
-    }
-
-    let local = RepoConfig::load_optional(repo_root)?;
-    let policy = resolve_policy(&default_policy(), Some(&config.checks_for(repo)), &local)?;
-    let inventory = inspect_repository(
-        repo_root,
-        &InventoryOptions {
-            ignore: local.ignore.clone(),
-        },
-    )?;
-    let managed_changes =
-        plan_managed_changes(repo, repo_root, &inventory, config.effective_managed())?;
-    let mut report = run_repository_checks_with_requirements(
-        repo_root,
-        &inventory,
-        &local,
-        &fleet_requirements(&local, &config),
-    );
-    report.apply_policy(&policy);
-    let plan = build_remediation_plan(repo, &[report], &managed_changes, Vec::new())?;
+    ensure_explicit_member(&config, repo)?;
+    let plan = plan_local_sync(&config, repo, repo_root)?;
 
     if apply {
         apply_file_changes(repo_root, &plan.file_changes)?;
@@ -1186,62 +976,4 @@ fn print_json<T: Serialize>(command: &'static str, ok: bool, data: &T) -> Result
         })?
     );
     Ok(())
-}
-
-fn pull_request_body(plan: &RemediationPlan) -> String {
-    let mut body = String::from(
-        "Ordnung found repository drift and generated this consolidated remediation.\n\n## File changes\n",
-    );
-    for change in &plan.file_changes {
-        let sources = change
-            .sources
-            .iter()
-            .map(|source| match source {
-                FileChangeSource::Check { check } => format!("`{check}`"),
-                FileChangeSource::Managed { entry } => format!("managed `{entry}`"),
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
-        let _ = writeln!(
-            body,
-            "- {} `{}` ({sources})",
-            file_operation_name(change.operation),
-            change.path.display()
-        );
-    }
-    body.push_str("\nThe default branch remains out of policy until this pull request lands.\n");
-    body
-}
-
-fn file_operation_name(operation: FileOperation) -> &'static str {
-    match operation {
-        FileOperation::Create => "create",
-        FileOperation::Update => "update",
-        FileOperation::Delete => "delete",
-    }
-}
-
-fn display_scope(path: &Path) -> String {
-    if path.as_os_str().is_empty() {
-        ".".into()
-    } else {
-        path.display().to_string()
-    }
-}
-
-fn status_name(status: CheckStatus) -> &'static str {
-    match status {
-        CheckStatus::Pass => "pass",
-        CheckStatus::Fail => "fail",
-        CheckStatus::Skip => "skip",
-        CheckStatus::Error => "error",
-    }
-}
-
-fn severity_name(severity: Severity) -> &'static str {
-    match severity {
-        Severity::Required => "required",
-        Severity::Recommended => "recommended",
-        Severity::Off => "off",
-    }
 }
