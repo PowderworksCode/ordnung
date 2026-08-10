@@ -1,8 +1,10 @@
 # Refactoring review
 
 Written against `prep-for-publishing` at 16,383 lines of Rust across
-`ordnung-core` and `ordnung-cli`. **Nothing in this document has been applied.**
-Every item is a proposal.
+`ordnung-core` and `ordnung-cli`.
+
+**Status:** item 1a is **done** (see below). Everything else is still a
+proposal. Nothing was applied without being proved behaviour-preserving.
 
 ## Summary
 
@@ -15,17 +17,48 @@ orchestration logic lives in the binary crate where it cannot be tested**, and
 
 Ranked by what I would do first:
 
-| # | Item | Size | Risk |
-| --- | --- | --- | --- |
-| 1 | Move fleet orchestration out of `main.rs` into core | large | medium |
-| 2 | Split `main.rs` rendering into `render.rs` | medium | low |
-| 3 | Split `gh.rs` into `gh/{mod,runner,wire}.rs` | medium | none |
-| 4 | Split `fleet.rs`; put its `git` shell-out behind a trait | large | medium |
-| 5 | Collapse the five `run_repository_checks*` entry points | small | low |
-| 6 | Pass `&RepoConfig` instead of enumerating fields in the context | small | low |
-| 7 | De-duplicate `ensure_no_symlink_path` | small | low |
-| 8 | Delete the no-op `apply_policy` call | trivial | none |
-| 9 | Split `tests/check.rs` by category | medium | none |
+| # | Item | Size | Risk | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Move fleet orchestration out of `main.rs` | large | medium | **done** |
+| 2 | Split `main.rs` rendering into `render.rs` | medium | low | started |
+| 3 | Split `gh.rs` into `gh/{mod,runner,wire}.rs` | medium | none | proposed |
+| 4 | Split `fleet.rs`; put its `git` shell-out behind a trait | large | medium | proposed |
+| 5 | Collapse the five `run_repository_checks*` entry points | small | low | proposed |
+| 6 | Pass `&RepoConfig` instead of enumerating fields in the context | small | low | proposed |
+| 7 | De-duplicate `ensure_no_symlink_path` | small | low | proposed |
+| 8 | Delete the no-op `apply_policy` call | trivial | none | proposed |
+| 9 | Split `tests/check.rs` by category | medium | none | proposed |
+
+## Done: 1a, fleet orchestration moved out of the binary
+
+`main.rs` 1,247 → 979 lines. New `crates/ordnung-cli/src/sync.rs` (333) holds
+`sync_fleet_member`, `check_fleet_member`, `check_fleet_members`,
+`sync_fleet_members`, `plan_fleet_member_settings`, `plan_local_sync`,
+`fleet_requirements`, `ensure_explicit_member`, and `pull_request_body`, each
+generic over `GhRunner`. A small `render.rs` (44) holds the four name-mapping
+helpers that both `main.rs` and `sync.rs` need, which is the start of item 2.
+
+`main.rs` keeps the clap surface, dispatch, printing, and exit codes. The
+orchestration no longer prints or chooses an exit code.
+
+**Behaviour preservation.** Ten command outputs were captured before and after.
+The demo-repository captures and all sixteen `--help` texts are byte-identical.
+The self-repository JSON report is structurally identical — 115 results, same
+statuses, severities, scopes and messages — once the two new source files
+Ordnung now sees are excluded. `inspect` differs only by listing them.
+`cargo fmt --all --check`, `cargo clippy --workspace --all-targets -D warnings`
+and `cargo test --workspace` all pass.
+
+**The payoff.** `crates/ordnung-cli/tests/sync.rs` (451 lines, 7 tests) covers
+the sync path for the first time, through a fake `gh` runner that routes by
+endpoint and materializes a checkout on clone. It pins: a non-member is
+rejected before any API call; fleet dependency requirements override same-named
+local ones; a dry run issues no mutating request at all; an archived member is
+refused before it is cloned; applying opens a pull request and writes settings;
+**an existing `ordnung/remediation` branch is force-updated** (the behaviour
+flagged as A3); and local sync plans managed files without writing them.
+
+Workspace tests went from 155 to 166.
 
 ---
 
