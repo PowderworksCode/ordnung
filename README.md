@@ -59,22 +59,21 @@ committed `Cargo.lock`.
 **Status** is `pass`, `fail`, `skip`, or `error`. **Severity** decides what a
 failure costs you:
 
-| Severity | Meaning | Affects exit code |
-| --- | --- | --- |
-| `required` | Ordnung considers this broken | **yes** |
-| `recommended` | Worth fixing, not a gate | no |
-| `off` | Reported for information only | no |
+| Severity | Meaning | Affects exit code | Shown by default |
+| --- | --- | --- | --- |
+| `required` | Ordnung considers this broken | **yes** | yes |
+| `recommended` | Worth fixing, not a gate | no | yes |
+| `off` | Switched off by the effective policy | no | no, use `--all` |
 
 Exit `0` means no `required` check failed, `1` means policy drift, `2` means an
 operational or configuration error.
 
 Two things are worth knowing before your first run:
 
-- **`off` checks still run and still print `fail`.** They are opinions Ordnung
-  holds but does not enforce — one test file per source file, a `.vale.ini`,
-  git hooks — and on a large repository they can outnumber the real findings
-  several times over. Filter with `ordnung check --json` on `severity`. A rough
-  edge in the output layer, not a verdict on your repository.
+- **`off` checks are hidden.** They are opinions Ordnung holds but does not
+  enforce — one test file per source file, a `.vale.ini`, git hooks. They still
+  run, so raising one to `required` in configuration needs no other change, but
+  they are not reported unless you pass `--all`.
 - **`ordnung check` runs 33 of Ordnung's 47 checks.** The other 14 read GitHub
   state — branch protection, secret scanning, workflow permissions — and need an
   API call. Four are `required`. A clean `ordnung check` is not a clean

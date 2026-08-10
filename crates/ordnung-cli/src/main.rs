@@ -16,7 +16,9 @@ use serde::Serialize;
 
 use ordnung_cli::gh::GhClient;
 use ordnung_cli::instructions::{InstructionContext, inject, render};
-use ordnung_cli::render::{display_scope, file_operation_name, severity_name, status_name};
+use ordnung_cli::render::{
+    display_scope, file_operation_name, retain_reported, severity_name, status_name,
+};
 use ordnung_cli::sync::{
     GithubSyncOutcome, check_fleet_members, ensure_explicit_member, plan_fleet_member_settings,
     plan_local_sync, sync_fleet_member, sync_fleet_members,
@@ -46,7 +48,7 @@ enum Command {
     /// Inventory supported projects in a repository.
     Inspect(RepositoryArgs),
     /// Run structural checks against a repository.
-    Check(RepositoryArgs),
+    Check(CheckArgs),
     /// Run local and GitHub-backed checks as one repository audit.
     RepoCheck(RepoCheckArgs),
     /// Plan or apply exact, non-guessing repository fixes.
@@ -68,6 +70,17 @@ struct RepositoryArgs {
 }
 
 #[derive(Debug, Args)]
+struct CheckArgs {
+    #[arg(default_value = ".")]
+    path: PathBuf,
+    #[arg(long)]
+    json: bool,
+    /// Include checks the effective policy has switched off.
+    #[arg(long)]
+    all: bool,
+}
+
+#[derive(Debug, Args)]
 struct RepositoryMutationArgs {
     #[arg(default_value = ".")]
     path: PathBuf,
@@ -85,6 +98,9 @@ struct RepoCheckArgs {
     repo: String,
     #[arg(long)]
     json: bool,
+    /// Include checks the effective policy has switched off.
+    #[arg(long)]
+    all: bool,
 }
 
 #[derive(Debug, Args)]
@@ -129,6 +145,9 @@ enum GithubCommand {
         repo_root: Option<PathBuf>,
         #[arg(long)]
         json: bool,
+        /// Include checks the effective policy has switched off.
+        #[arg(long)]
+        all: bool,
     },
     /// Plan or explicitly apply repository-level GitHub settings.
     SyncSettings {
@@ -368,7 +387,7 @@ fn inspect(args: RepositoryArgs) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
-fn check(args: RepositoryArgs) -> Result<ExitCode> {
+fn check(args: CheckArgs) -> Result<ExitCode> {
     let config = RepoConfig::load_optional(&args.path)?;
     let policy = resolve_policy(&default_policy(), None, &config)?;
     let inventory = inspect_repository(
@@ -381,19 +400,11 @@ fn check(args: RepositoryArgs) -> Result<ExitCode> {
     report.apply_policy(&policy);
 
     let clean = report.is_clean();
+    retain_reported(&mut report, args.all);
     if args.json {
         print_json("check", clean, &report)?;
     } else {
-        for result in &report.results {
-            println!(
-                "{:<5} {:<11} {:<22} {}: {}",
-                status_name(result.status),
-                severity_name(result.severity),
-                result.check,
-                display_scope(&result.scope),
-                result.message
-            );
-        }
+        print_report(&report);
     }
 
     Ok(if clean {
@@ -435,6 +446,8 @@ fn repo_check(args: RepoCheckArgs) -> Result<ExitCode> {
     let mut github = run_github_checks_with_settings(&facts, &settings);
     github.apply_policy(&policy);
     let clean = local.is_clean() && github.is_clean();
+    retain_reported(&mut local, args.all);
+    retain_reported(&mut github, args.all);
     let outcome = RepoCheckOutcome {
         repository: facts.repository,
         local,
@@ -592,6 +605,7 @@ fn github(command: GithubCommand) -> Result<ExitCode> {
             repo,
             repo_root,
             json,
+            all,
         } => {
             let facts = client.fetch_repository(&repo)?;
             let config = match repo_root {
@@ -603,6 +617,7 @@ fn github(command: GithubCommand) -> Result<ExitCode> {
             let mut report = run_github_checks_with_settings(&facts, &settings);
             report.apply_policy(&policy);
             let clean = report.is_clean();
+            retain_reported(&mut report, all);
             print_or_serialize_report(&report, json, "github-check", clean)?;
             Ok(if clean {
                 ExitCode::SUCCESS

@@ -351,3 +351,80 @@ fn action_wrapper_records_validation_errors() {
         "outcome=error\nexit-code=2\n"
     );
 }
+
+/// A check the effective policy has switched off still runs, but reporting it as
+/// `fail` beside a real failure is what made a first run read as dozens of
+/// problems. It is hidden unless `--all` asks for it, and it never moves the
+/// exit code either way.
+#[test]
+fn disabled_checks_are_hidden_unless_all_is_requested() {
+    let repo = tempfile::tempdir().unwrap();
+    fs::create_dir_all(repo.path().join("src")).unwrap();
+    fs::write(
+        repo.path().join("Cargo.toml"),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n",
+    )
+    .unwrap();
+    fs::write(repo.path().join("src/main.rs"), "fn main() {}\n").unwrap();
+    fs::write(repo.path().join("README.md"), "# fixture\n").unwrap();
+
+    let path = repo.path().to_str().unwrap();
+    let default = ordnung(&["check", path]);
+    let all = ordnung(&["check", path, "--all"]);
+
+    let default_out = String::from_utf8(default.stdout).unwrap();
+    let all_out = String::from_utf8(all.stdout).unwrap();
+
+    assert!(
+        !default_out.lines().any(|line| line.contains(" off ")),
+        "no disabled check appears by default:\n{default_out}"
+    );
+    assert!(
+        all_out.lines().any(|line| line.contains(" off ")),
+        "--all shows disabled checks:\n{all_out}"
+    );
+    assert!(
+        all_out.lines().count() > default_out.lines().count(),
+        "--all is a superset"
+    );
+    assert_eq!(
+        default.status.code(),
+        all.status.code(),
+        "hiding disabled checks does not change the exit code"
+    );
+
+    // Every line the default prints is one --all also prints: hiding, not rewording.
+    for line in default_out.lines() {
+        assert!(all_out.contains(line), "--all is missing {line:?}");
+    }
+}
+
+/// The JSON envelope reports the same set the human output does, so a consumer
+/// filtering on `severity` is not silently handed a different population.
+#[test]
+fn json_output_hides_disabled_checks_too() {
+    let repo = tempfile::tempdir().unwrap();
+    fs::create_dir_all(repo.path().join("src")).unwrap();
+    fs::write(
+        repo.path().join("Cargo.toml"),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n",
+    )
+    .unwrap();
+    fs::write(repo.path().join("src/main.rs"), "fn main() {}\n").unwrap();
+
+    let path = repo.path().to_str().unwrap();
+    let default = ordnung(&["check", path, "--json"]);
+    let out = String::from_utf8(default.stdout).unwrap();
+
+    assert!(
+        !out.contains("\"severity\": \"off\""),
+        "no disabled check in the default JSON report:\n{out}"
+    );
+
+    let all = ordnung(&["check", path, "--json", "--all"]);
+    let all_out = String::from_utf8(all.stdout).unwrap();
+    assert!(
+        all_out.contains("\"severity\": \"off\""),
+        "--all restores them in JSON too"
+    );
+}

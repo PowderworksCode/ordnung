@@ -2,6 +2,16 @@
 
 Notable changes to Ordnung are recorded here, newest first.
 
+## Unreleased
+
+- Checks the effective policy has switched `off` are no longer reported. They
+  still run, so raising one to `required` needs no other change, but a first run
+  against a repository now shows what Ordnung enforces rather than everything it
+  has an opinion about. On Ordnung's own repository this is 32 lines of output
+  instead of 115, and 8 findings instead of 84. Pass `--all` to `check`,
+  `repo-check`, or `github check` to see them. Exit codes are unchanged: only
+  `required` findings ever gated those.
+
 ## 2026-08-01
 
 - Added the `git-hooks` check: hooks committed under `.githooks`, every hook file
