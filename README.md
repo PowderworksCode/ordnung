@@ -129,12 +129,10 @@ into a marker-delimited region of the files you name, leaving the rest alone.
     repository: ${{ github.repository }}
 ```
 
-Outputs: `outcome` (`clean`, `drift`, `error`) and `exit-code`. `github-token`
-defaults to `${{ github.token }}`.
-
-> **The Action builds Ordnung from source on every run.** There is no release
-> binary yet, so each invocation runs `cargo install` — expect minutes, not
-> seconds. Set `ORDNUNG_BIN` to an installed binary to skip the build.
+Outputs `outcome` (`clean`, `drift`, `error`) and `exit-code`. Pinned to a
+release tag it downloads that release's binary and verifies its checksum;
+otherwise it builds from source, which takes minutes. See
+[docs/action.md](docs/action.md) for inputs, outputs, and binary resolution.
 
 ### Across a fleet
 

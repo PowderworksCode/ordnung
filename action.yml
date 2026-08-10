@@ -57,4 +57,8 @@ runs:
         ORDNUNG_ACTION_REPOSITORY: ${{ inputs.repository }}
         ORDNUNG_ACTION_APPLY: ${{ inputs.apply }}
         ORDNUNG_ACTION_FORMAT: ${{ inputs.format }}
+        # Which release to download a binary from, and from where. A tag ref gets
+        # the published binary; a branch or SHA ref builds from source.
+        ORDNUNG_ACTION_REF: ${{ github.action_ref }}
+        ORDNUNG_ACTION_REPOSITORY: ${{ github.action_repository }}
       run: '"${{ github.action_path }}/scripts/action.sh"'
