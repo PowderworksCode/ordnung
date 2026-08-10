@@ -17,8 +17,8 @@ use serde::Serialize;
 use ordnung_cli::gh::GhClient;
 use ordnung_cli::instructions::{InstructionContext, inject, render};
 use ordnung_cli::render::{
-    display_scope, file_operation_name, retain_reported, severity_name, status_name,
-    unreached_github_checks,
+    SeverityFloor, display_scope, file_operation_name, hidden_count, retain_reported,
+    severity_name, status_name, summarize, unreached_github_checks,
 };
 use ordnung_cli::sync::{
     GithubSyncOutcome, check_fleet_members, ensure_explicit_member, plan_fleet_member_settings,
@@ -70,15 +70,43 @@ struct RepositoryArgs {
     json: bool,
 }
 
+/// Which findings a reporting command prints. Shared so `check`, `repo-check`,
+/// and `github check` cannot drift apart.
+#[derive(Debug, Clone, Copy, Args)]
+struct ReportFilter {
+    /// Include checks the effective policy has switched off.
+    #[arg(long)]
+    all: bool,
+    /// Only report findings at this severity or above.
+    #[arg(long, value_enum, conflicts_with = "all")]
+    severity: Option<SeverityArg>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum SeverityArg {
+    Required,
+    Recommended,
+    Off,
+}
+
+impl ReportFilter {
+    fn floor(self) -> SeverityFloor {
+        match (self.all, self.severity) {
+            (true, _) | (_, Some(SeverityArg::Off)) => SeverityFloor::All,
+            (_, Some(SeverityArg::Required)) => SeverityFloor::Required,
+            (_, Some(SeverityArg::Recommended)) | (false, None) => SeverityFloor::Recommended,
+        }
+    }
+}
+
 #[derive(Debug, Args)]
 struct CheckArgs {
     #[arg(default_value = ".")]
     path: PathBuf,
     #[arg(long)]
     json: bool,
-    /// Include checks the effective policy has switched off.
-    #[arg(long)]
-    all: bool,
+    #[command(flatten)]
+    filter: ReportFilter,
 }
 
 #[derive(Debug, Args)]
@@ -99,9 +127,8 @@ struct RepoCheckArgs {
     repo: String,
     #[arg(long)]
     json: bool,
-    /// Include checks the effective policy has switched off.
-    #[arg(long)]
-    all: bool,
+    #[command(flatten)]
+    filter: ReportFilter,
 }
 
 #[derive(Debug, Args)]
@@ -146,9 +173,8 @@ enum GithubCommand {
         repo_root: Option<PathBuf>,
         #[arg(long)]
         json: bool,
-        /// Include checks the effective policy has switched off.
-        #[arg(long)]
-        all: bool,
+        #[command(flatten)]
+        filter: ReportFilter,
     },
     /// Plan or explicitly apply repository-level GitHub settings.
     SyncSettings {
@@ -406,6 +432,22 @@ fn inspect(args: RepositoryArgs) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+/// Counted before filtering, so the summary reports the whole run rather than
+/// the slice the caller chose to look at.
+fn required_failure_count(report: &Report) -> usize {
+    report
+        .results
+        .iter()
+        .filter(|result| {
+            result.severity == ordnung_core::Severity::Required
+                && matches!(
+                    result.status,
+                    ordnung_core::CheckStatus::Fail | ordnung_core::CheckStatus::Error
+                )
+        })
+        .count()
+}
+
 fn check(args: CheckArgs) -> Result<ExitCode> {
     let config = RepoConfig::load_optional(&args.path)?;
     let policy = resolve_policy(&default_policy(), None, &config)?;
@@ -419,11 +461,18 @@ fn check(args: CheckArgs) -> Result<ExitCode> {
     report.apply_policy(&policy);
 
     let clean = report.is_clean();
-    retain_reported(&mut report, args.all);
+    let floor = args.filter.floor();
+    let hidden = hidden_count(&report, floor);
+    let required_failures = required_failure_count(&report);
+    retain_reported(&mut report, floor);
     if args.json {
         print_json("check", clean, &report)?;
     } else {
         print_report(&report);
+        println!(
+            "{}",
+            summarize(&[&report], hidden, required_failures).line()
+        );
         if let Some(note) = unreached_github_checks(&policy).note(&args.path.display().to_string())
         {
             println!("{note}");
@@ -469,8 +518,11 @@ fn repo_check(args: RepoCheckArgs) -> Result<ExitCode> {
     let mut github = run_github_checks_with_settings(&facts, &settings);
     github.apply_policy(&policy);
     let clean = local.is_clean() && github.is_clean();
-    retain_reported(&mut local, args.all);
-    retain_reported(&mut github, args.all);
+    let floor = args.filter.floor();
+    let hidden = hidden_count(&local, floor) + hidden_count(&github, floor);
+    let required_failures = required_failure_count(&local) + required_failure_count(&github);
+    retain_reported(&mut local, floor);
+    retain_reported(&mut github, floor);
     let outcome = RepoCheckOutcome {
         repository: facts.repository,
         local,
@@ -484,6 +536,15 @@ fn repo_check(args: RepoCheckArgs) -> Result<ExitCode> {
         print_report(&outcome.local);
         println!("\nGitHub checks");
         print_report(&outcome.github);
+        println!(
+            "\n{}",
+            summarize(
+                &[&outcome.local, &outcome.github],
+                hidden,
+                required_failures
+            )
+            .line()
+        );
     }
     Ok(if clean {
         ExitCode::SUCCESS
@@ -628,7 +689,7 @@ fn github(command: GithubCommand) -> Result<ExitCode> {
             repo,
             repo_root,
             json,
-            all,
+            filter,
         } => {
             let facts = client.fetch_repository(&repo)?;
             let config = match repo_root {
@@ -640,7 +701,7 @@ fn github(command: GithubCommand) -> Result<ExitCode> {
             let mut report = run_github_checks_with_settings(&facts, &settings);
             report.apply_policy(&policy);
             let clean = report.is_clean();
-            retain_reported(&mut report, all);
+            retain_reported(&mut report, filter.floor());
             print_or_serialize_report(&report, json, "github-check", clean)?;
             Ok(if clean {
                 ExitCode::SUCCESS

@@ -374,6 +374,11 @@ fn disabled_checks_are_hidden_unless_all_is_requested() {
 
     let default_out = String::from_utf8(default.stdout).unwrap();
     let all_out = String::from_utf8(all.stdout).unwrap();
+    fn is_finding(line: &&str) -> bool {
+        ["pass", "fail", "skip", "error"]
+            .iter()
+            .any(|status| line.starts_with(status))
+    }
 
     assert!(
         !default_out.lines().any(|line| line.contains(" off ")),
@@ -384,7 +389,7 @@ fn disabled_checks_are_hidden_unless_all_is_requested() {
         "--all shows disabled checks:\n{all_out}"
     );
     assert!(
-        all_out.lines().count() > default_out.lines().count(),
+        all_out.lines().filter(is_finding).count() > default_out.lines().filter(is_finding).count(),
         "--all is a superset"
     );
     assert_eq!(
@@ -393,8 +398,9 @@ fn disabled_checks_are_hidden_unless_all_is_requested() {
         "hiding disabled checks does not change the exit code"
     );
 
-    // Every line the default prints is one --all also prints: hiding, not rewording.
-    for line in default_out.lines() {
+    // Every finding the default prints is one --all also prints: hiding, not
+    // rewording. The summary line legitimately differs — it counts what is shown.
+    for line in default_out.lines().filter(is_finding) {
         assert!(all_out.contains(line), "--all is missing {line:?}");
     }
 }
@@ -523,4 +529,66 @@ fn a_local_only_run_says_which_checks_it_could_not_reach() {
         "JSON output carries no prose note:\n{json}"
     );
     serde_json::from_str::<serde_json::Value>(&json).expect("JSON output stays parseable");
+}
+
+/// The output used to just stop, so answering "did this pass?" meant scrolling
+/// back and reading every line.
+#[test]
+fn a_run_ends_with_a_summary_and_can_be_filtered_by_severity() {
+    let repo = tempfile::tempdir().unwrap();
+    fs::create_dir_all(repo.path().join("src")).unwrap();
+    fs::write(
+        repo.path().join("Cargo.toml"),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n",
+    )
+    .unwrap();
+    fs::write(repo.path().join("src/main.rs"), "fn main() {}\n").unwrap();
+
+    let path = repo.path().to_str().unwrap();
+    let summary_of = |args: &[&str]| {
+        String::from_utf8(ordnung(args).stdout)
+            .unwrap()
+            .lines()
+            .find(|line| line.contains(" results") || line.contains(" result "))
+            .map(str::to_owned)
+            .unwrap_or_else(|| panic!("no summary line for {args:?}"))
+    };
+
+    let default = summary_of(&["check", path]);
+    assert!(
+        default.contains("hidden, see --all"),
+        "the summary says findings were withheld: {default}"
+    );
+    assert!(
+        default.contains("required failure"),
+        "the summary states the verdict: {default}"
+    );
+    assert!(
+        default.contains("exit "),
+        "the summary explains the exit code: {default}"
+    );
+
+    // A narrower floor is a strict subset, and never changes the verdict.
+    let required_only = ordnung(&["check", path, "--severity", "required"]);
+    let out = String::from_utf8(required_only.stdout).unwrap();
+    for line in out.lines().filter(|line| {
+        line.starts_with("pass") || line.starts_with("fail") || line.starts_with("skip")
+    }) {
+        assert!(
+            line.contains("required"),
+            "--severity required shows only required findings: {line}"
+        );
+    }
+    assert_eq!(
+        required_only.status.code(),
+        ordnung(&["check", path]).status.code(),
+        "the display floor does not move the exit code"
+    );
+
+    // --all and --severity would contradict each other, so clap refuses both.
+    let conflict = ordnung(&["check", path, "--all", "--severity", "off"]);
+    assert!(
+        !conflict.status.success(),
+        "--all conflicts with --severity"
+    );
 }
