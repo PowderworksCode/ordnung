@@ -9,9 +9,9 @@ protection, and the layout those live in.
 
 ## The problem it solves
 
-Every repository accumulates the same small structural debts. A lockfile that
-was never committed. CI that tests but does not typecheck. An Action pinned to
-a tag instead of a SHA. A second package that no Dependabot entry covers.
+Every repository accumulates the same small structural debts: a lockfile never
+committed, CI that tests but does not typecheck, an Action pinned to a tag
+instead of a SHA, a second package no Dependabot entry covers.
 
 None breaks anything today, none is what a code reviewer looks at, and each is
 invisible until it matters. Across a dozen repositories, nobody knows which are
@@ -43,21 +43,21 @@ fail  recommended readme-quality         README.md: under 150 words (5); no inst
 pass  required    reproducible-toolchain .github/workflows: no GitHub setup action uses an unbounded toolchain version
 fail  recommended scripts                scripts/dev.sh: no scripts/dev.sh to stand up the development environment
 pass  required    test-retry-masking     .: no rerun-until-green test retry is configured
+note: 12 GitHub-backed checks did not run, 4 of them required. Run `ordnung repo-check . --repo owner/name` for the full audit.
 $ echo $?
 1
 ```
 
 Four columns: **status**, **severity**, **check ID**, then the **scope** and the
-reason. Every line names the file it is about. Abridged: 15 `skip` and
-`off`-severity lines are omitted; the full run is 33 lines.
+reason. Eight `skip` lines are omitted here.
 
 The three `required` failures are real: no CI, no Dependabot config, no
 committed `Cargo.lock`.
 
 ## Reading the output
 
-**Status** is `pass`, `fail`, `skip`, or `error`. **Severity** decides what a
-failure costs you:
+**Status** is `pass`, `fail`, `skip`, or `error`. **Severity** decides what it
+costs you:
 
 | Severity | Meaning | Affects exit code | Shown by default |
 | --- | --- | --- | --- |
@@ -72,16 +72,16 @@ Two things are worth knowing before your first run:
 
 - **`off` checks are hidden.** They are opinions Ordnung holds but does not
   enforce — one test file per source file, a `.vale.ini`, git hooks. They still
-  run, so raising one to `required` in configuration needs no other change, but
-  they are not reported unless you pass `--all`.
+  run, so raising one to `required` needs no other change, but they are not
+  reported unless you pass `--all`.
 - **`ordnung check` runs 33 of Ordnung's 47 checks.** The other 14 read GitHub
   state — branch protection, secret scanning, workflow permissions — and need an
-  API call. Four are `required`. A clean `ordnung check` is not a clean
-  repository; use `repo-check` for that.
+  API call. Four are `required`, so a clean `check` is not a clean repository —
+  the run ends with a note saying so. `repo-check` runs the full set.
 
 ## Install
 
-Builds with a stable Rust toolchain; no system dependencies beyond `git`.
+Builds with stable Rust; no system dependencies beyond `git`.
 
 ```sh
 cargo install --git https://github.com/PowderworksCode/ordnung ordnung-cli --locked
@@ -91,18 +91,16 @@ From a clone:
 
 ```sh
 git clone https://github.com/PowderworksCode/ordnung
-cd ordnung
-cargo install --path crates/ordnung-cli --locked
+cd ordnung && cargo install --path crates/ordnung-cli --locked
 ```
 
-The binary is named `ordnung`. Not on crates.io — the name is taken there by an
+The binary is named `ordnung`. Not on crates.io — that name is taken by an
 unrelated crate.
 
 **Anything touching GitHub also needs the [`gh` CLI](https://cli.github.com/)
 installed and authenticated** (`gh auth login`) — Ordnung shells out to `gh api`
 rather than handling tokens itself. `ORDNUNG_GH` selects a different binary.
-Working-tree-only commands (`check`, `inspect`, `fix`, `instructions`) do not
-need it.
+`check`, `inspect`, `fix`, and `instructions` do not need it.
 
 ## The three ways to run it
 
@@ -117,10 +115,10 @@ ordnung fix . --apply                              # write them
 ordnung instructions . --write AGENTS.md           # agent rules
 ```
 
-`fix` is deliberately narrow: it only offers changes it can make exactly,
-without guessing, and says so when it has nothing to offer. `instructions`
-renders a deterministic Markdown block of the checks in force and injects it
-into a marker-delimited region of the files you name, leaving the rest alone.
+`fix` is deliberately narrow: it only offers changes it can make exactly, and
+says so when it has nothing to offer. `instructions` renders a deterministic
+Markdown block of the checks in force and injects it into a marker-delimited
+region of the files you name, leaving the rest alone.
 
 ### In CI, as a GitHub Action
 
@@ -131,8 +129,8 @@ into a marker-delimited region of the files you name, leaving the rest alone.
     repository: ${{ github.repository }}
 ```
 
-Outputs are `outcome` (`clean`, `drift`, `error`) and `exit-code`;
-`github-token` defaults to `${{ github.token }}`.
+Outputs: `outcome` (`clean`, `drift`, `error`) and `exit-code`. `github-token`
+defaults to `${{ github.token }}`.
 
 > **The Action builds Ordnung from source on every run.** There is no release
 > binary yet, so each invocation runs `cargo install` — expect minutes, not
@@ -161,7 +159,7 @@ What Ordnung writes, precisely:
 - `fix --apply` writes files in the local working tree only.
 - `fleet github-sync --apply` does two things under one flag: it **changes
   repository settings immediately**, and it pushes a branch and opens a pull
-  request. The settings change is live; the file changes are reviewable.
+  request. The settings change is live; the files are reviewable.
 - That pull request always uses a branch named **`ordnung/remediation`**, which
   Ordnung **force-pushes**, re-parented onto the current default branch. Commits
   pushed to that branch by anyone else are discarded. The name is not
@@ -192,7 +190,7 @@ inventory. Checks read facts; they never rescan.
 
 Each check is one self-registering module under
 `crates/ordnung-core/src/checks/`, owning its ID, default severity, category,
-scope, agent instructions, and runner. Adding a check means adding one file.
+scope, agent instructions, and runner. Adding a check adds one file.
 
 Check fixes and fleet-managed files combine into one deterministic plan before
 anything is written. See [docs/design.md](docs/design.md) for the full contract.

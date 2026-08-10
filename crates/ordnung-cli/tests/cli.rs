@@ -480,3 +480,47 @@ fn a_closed_pipe_ends_the_process_quietly() {
         "the reader still gets its line"
     );
 }
+
+/// A clean `check` means "the local checks passed", not "this repository is in
+/// order": the GitHub-backed checks were never reached, and several are
+/// required. Saying so is the difference between a partial audit and a
+/// misleading one.
+#[test]
+fn a_local_only_run_says_which_checks_it_could_not_reach() {
+    let repo = tempfile::tempdir().unwrap();
+    fs::create_dir_all(repo.path().join("src")).unwrap();
+    fs::write(
+        repo.path().join("Cargo.toml"),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n",
+    )
+    .unwrap();
+    fs::write(repo.path().join("src/main.rs"), "fn main() {}\n").unwrap();
+
+    let path = repo.path().to_str().unwrap();
+    let out = String::from_utf8(ordnung(&["check", path]).stdout).unwrap();
+
+    let note = out
+        .lines()
+        .find(|line| line.starts_with("note:"))
+        .unwrap_or_else(|| panic!("expected a note about unreached checks in:\n{out}"));
+    assert!(
+        note.contains("GitHub-backed"),
+        "the note names what was skipped: {note}"
+    );
+    assert!(
+        note.contains("required"),
+        "the note says some of them are required: {note}"
+    );
+    assert!(
+        note.contains("repo-check"),
+        "the note names the command that would run them: {note}"
+    );
+
+    // The note is prose for a human; it must not contaminate the JSON envelope.
+    let json = String::from_utf8(ordnung(&["check", path, "--json"]).stdout).unwrap();
+    assert!(
+        !json.contains("note:"),
+        "JSON output carries no prose note:\n{json}"
+    );
+    serde_json::from_str::<serde_json::Value>(&json).expect("JSON output stays parseable");
+}

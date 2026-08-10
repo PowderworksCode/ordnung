@@ -4,6 +4,13 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- `check` now says which checks it could not reach. It runs the local checks
+  only; the GitHub-backed ones need an API call, and several are `required`, so a
+  clean `check` never meant the repository was in order. The run ends with a note
+  naming how many were skipped, how many of those are required, and the
+  `repo-check` invocation that would run them. The count follows the resolved
+  policy, so a repository that has switched them off is not told they are missing.
+
 - A closed pipe no longer panics. `ordnung check | head` died with a Rust panic
   and exit 101; Ordnung now restores the default `SIGPIPE` disposition at startup,
   so a reader that stops early ends the process quietly the way every other
