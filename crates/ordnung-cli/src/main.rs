@@ -18,6 +18,7 @@ use ordnung_cli::gh::GhClient;
 use ordnung_cli::instructions::{InstructionContext, inject, render};
 use ordnung_cli::render::{
     display_scope, file_operation_name, retain_reported, severity_name, status_name,
+    unreached_github_checks,
 };
 use ordnung_cli::sync::{
     GithubSyncOutcome, check_fleet_members, ensure_explicit_member, plan_fleet_member_settings,
@@ -423,6 +424,10 @@ fn check(args: CheckArgs) -> Result<ExitCode> {
         print_json("check", clean, &report)?;
     } else {
         print_report(&report);
+        if let Some(note) = unreached_github_checks(&policy).note(&args.path.display().to_string())
+        {
+            println!("{note}");
+        }
     }
 
     Ok(if clean {
