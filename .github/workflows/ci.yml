@@ -31,3 +31,83 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
+
+  # The Action is a third distribution channel and probably the one most users
+  # touch, but nothing exercised it: `scripts/action.sh` has unit coverage for its
+  # argument mapping, while `action.yml` itself — the inputs, the environment it
+  # builds, and the outputs it reports — was never run. This job runs the Action
+  # the way a consumer does.
+  action:
+    name: action
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+      # A repository Ordnung finds clean, so the smoke test asserts a real
+      # success rather than tolerating a failure. It lives outside the checkout
+      # so Ordnung's own checks never see it.
+      - name: Build a fixture repository
+        run: |
+          set -euo pipefail
+          fixture="${RUNNER_TEMP}/fixture"
+          mkdir -p "${fixture}/.github/workflows"
+          printf '# fixture\n\nA repository used to smoke-test the Ordnung Action.\n' \
+            > "${fixture}/README.md"
+          cat > "${fixture}/.github/workflows/ci.yml" <<'WORKFLOW'
+          name: CI
+          on:
+            push:
+              branches: [main]
+            pull_request:
+          jobs:
+            gate:
+              runs-on: ubuntu-latest
+              timeout-minutes: 10
+              steps:
+                - run: echo test
+                - run: echo lint
+                - run: echo format
+          WORKFLOW
+          cat > "${fixture}/.github/dependabot.yml" <<'DEPENDABOT'
+          version: 2
+          updates:
+            - package-ecosystem: github-actions
+              directory: /
+              schedule:
+                interval: weekly
+          DEPENDABOT
+
+      - id: clean
+        uses: ./
+        with:
+          mode: check
+          path: ${{ runner.temp }}/fixture
+
+      - name: The Action reports a clean outcome
+        run: |
+          set -euo pipefail
+          test "${{ steps.clean.outputs.outcome }}" = clean
+          test "${{ steps.clean.outputs.exit-code }}" = 0
+
+      # Drift must be reported as drift rather than as an error, and the exit code
+      # must survive the wrapper. `continue-on-error` is correct here: the failure
+      # is the assertion, not something being hidden.
+      #
+      # ORDNUNG_BIN reuses the binary the previous step installed, which skips a
+      # second build and covers the escape hatch the Action documents.
+      - id: drift
+        uses: ./
+        continue-on-error: true
+        env:
+          ORDNUNG_BIN: ${{ runner.temp }}/ordnung-action/bin/ordnung
+        with:
+          mode: check
+          path: .
+
+      - name: The Action reports drift as drift
+        run: |
+          set -euo pipefail
+          test "${{ steps.drift.outputs.outcome }}" = drift
+          test "${{ steps.drift.outputs.exit-code }}" = 1

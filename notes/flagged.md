@@ -155,20 +155,14 @@ statement of why the exit code is what it is. `check` has exactly two flags:
 2. Summary only.
 3. Neither; document `--json` piping as the answer.
 
-### B4. `readme-quality` counts fenced code blocks as prose
+### B4. `readme-quality` counts fenced code blocks as prose — **not a defect**
 
-**Today.** The check's 150–1,500 word window counts every word in the file. The
-new README needed roughly 200 words trimmed purely because it contains a real
-20-line sample of Ordnung's own output plus ten short command blocks.
+Raised because the 150–1,500 word window counts every word in the file, and a
+README carrying a real sample of Ordnung's output kept crossing the ceiling.
 
-**Why it matters.** The check penalises exactly the thing that makes a README
-good — showing real output — and it did so to this repository's README during
-this work.
-
-**Options.**
-1. **Exclude fenced code blocks from the word count** — *recommended*.
-2. Raise the ceiling to 2,500.
-3. Leave it; treat the pressure as useful.
+**Decided: working as intended.** The README is meant to be short. Detail belongs
+in `docs/`, or does not belong at all. The ceiling is the mechanism that enforces
+that, and code blocks counting toward it is part of why it works. No change.
 
 ---
 
@@ -193,19 +187,27 @@ not seconds) on every invocation, in their CI minutes.
 3. Keep building, but document the cost and add a `Swatinem/rust-cache` step.
    Cheapest; still minutes on a cold cache.
 
-### C2. The Action is never exercised
+### C2. The Action was never exercised end to end — **done**
 
-**Today.** No workflow in this repository references `./` or `action.yml`, and
-no test covers `scripts/action.sh`. Its seven modes, argument mapping and
-outcome mapping are entirely untested. It is mentioned in `docs/design.md` and,
-as of this branch, the README — nowhere else.
+**Correction to what this section first said.** It claimed no test covered
+`scripts/action.sh`. That was wrong: `tests/cli.rs` has three
+`action_wrapper_*` tests that drive the script with a stub `ORDNUNG_BIN` and
+assert the arguments it builds, covering the default mode, `fleet-sync-all`, and
+input validation.
 
-**Options.**
-1. **Add a CI job that runs the Action against this repository in
-   `mode: check`** — *recommended*. Catches the whole argument-mapping surface
-   cheaply and dogfoods the channel.
-2. Shell-level tests for `action.sh` with a stub `ORDNUNG_BIN`.
-3. Mark the Action experimental in the README until covered.
+What was genuinely untested was `action.yml` itself — the inputs, the
+environment it assembles, and the outputs it reports — because no workflow
+referenced `./`. The `cargo install` path had never run in CI either.
+
+**Done.** `ci.yml` gained an `action` job that runs the Action the way a consumer
+does: once against a generated fixture repository that Ordnung finds clean
+(asserting `outcome=clean`, `exit-code=0`), and once against this repository
+(asserting `outcome=drift`, `exit-code=1`). The second run sets `ORDNUNG_BIN` to
+the binary the first installed, which skips a redundant build and covers that
+escape hatch too.
+
+Still uncovered: `fix`, `github-check`, `fleet-check`, and `fleet-sync` modes,
+which need GitHub credentials or a fleet manifest.
 
 ### C3. crates.io is blocked by more than the git dependency
 
