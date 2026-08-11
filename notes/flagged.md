@@ -168,24 +168,29 @@ that, and code blocks counting toward it is part of why it works. No change.
 
 ## C. Distribution
 
-### C1. The GitHub Action builds from source on every run
+### C1. The GitHub Action built from source on every run — **done**
 
-**Today.** `scripts/action.sh:47–52` runs `cargo install --path
-"$GITHUB_ACTION_PATH/crates/ordnung-cli" --locked` unless `ORDNUNG_BIN` is set.
-There is no release workflow — `.github/workflows/` contains only `ci.yml` — so
-there is no binary to download.
+**Was.** `scripts/action.sh` ran `cargo install --path` unless `ORDNUNG_BIN` was
+set, and no release workflow existed, so there was no binary to download. Every
+consumer paid a full Rust build, in their CI minutes, on every invocation.
 
-**Why it matters.** This is likely the distribution channel most users would
-actually touch, and it costs every consumer a full Rust release build (minutes,
-not seconds) on every invocation, in their CI minutes.
+**Done.** The Action now resolves a binary in three steps: `ORDNUNG_BIN`, then a
+published release binary matching its pinned tag and the runner's platform
+(checksum-verified), then a source build. Every failure in the middle step is
+recoverable and reports why, so nothing that used to work stops working.
 
-**Options.**
-1. **Add a release workflow publishing tagged binaries; have `action.sh`
-   download the matching one** — *recommended*. Also the prerequisite for a
-   sane `curl | sh` install.
-2. Publish a prebuilt container image and make the Action `using: docker`.
-3. Keep building, but document the cost and add a `Swatinem/rust-cache` step.
-   Cheapest; still minutes on a cold cache.
+`.github/workflows/release.yml` drafts a release on a pushed `v*` tag, builds
+`x86_64-unknown-linux-gnu`, `x86_64-apple-darwin` and `aarch64-apple-darwin`,
+uploads an archive and `.sha256` per platform, and publishes only once every
+platform has succeeded.
+
+**Still open.** `aarch64-unknown-linux-gnu` is not published: it needs a cross
+linker or an ARM runner. Those runners fall back to a source build. Worth adding
+if anyone runs Ordnung on ARM Linux CI.
+
+**Note.** No tag has been pushed and no release exists, so today every consumer
+still gets the source build. The mechanism is in place for the first release;
+publishing remains your call.
 
 ### C2. The Action was never exercised end to end — **done**
 

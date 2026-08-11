@@ -592,3 +592,224 @@ fn a_run_ends_with_a_summary_and_can_be_filtered_by_severity() {
         "--all conflicts with --severity"
     );
 }
+
+#[cfg(unix)]
+fn write_executable(path: &std::path::Path, body: &str) {
+    use std::os::unix::fs::PermissionsExt;
+    fs::write(path, body).unwrap();
+    let mut permissions = fs::metadata(path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(path, permissions).unwrap();
+}
+
+/// A `gh` that serves one release asset, and a `cargo` that records having been
+/// asked to build. Between them the Action's binary resolution can be exercised
+/// without a network or a compiler.
+#[cfg(unix)]
+fn action_stubs(directory: &std::path::Path) -> std::path::PathBuf {
+    let bin = directory.join("stub-bin");
+    fs::create_dir_all(&bin).unwrap();
+
+    write_executable(
+        &bin.join("gh"),
+        r#"#!/bin/sh
+# gh release download <tag> --repo <slug> --pattern <p> --pattern <p> --dir <dir>
+if [ "$1" != "release" ] || [ "$2" != "download" ]; then exit 1; fi
+tag="$3"
+dir=""
+while [ $# -gt 0 ]; do
+  if [ "$1" = "--dir" ]; then dir="$2"; fi
+  shift
+done
+if [ -z "$STUB_RELEASE_TARGET" ]; then exit 1; fi
+archive="ordnung-${tag}-${STUB_RELEASE_TARGET}.tar.gz"
+work="$(mktemp -d)"
+printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "$FAKE_ARGUMENTS"\n' > "$work/ordnung"
+chmod +x "$work/ordnung"
+tar -czf "$dir/$archive" -C "$work" ordnung
+(cd "$dir" && shasum -a 256 "$archive" > "$archive.sha256")
+exit 0
+"#,
+    );
+    write_executable(
+        &bin.join("cargo"),
+        r#"#!/bin/sh
+printf 'built\n' >> "$STUB_CARGO_LOG"
+root=""
+while [ $# -gt 0 ]; do
+  if [ "$1" = "--root" ]; then root="$2"; fi
+  shift
+done
+mkdir -p "$root/bin"
+printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "$FAKE_ARGUMENTS"\n' > "$root/bin/ordnung"
+chmod +x "$root/bin/ordnung"
+exit 0
+"#,
+    );
+    bin
+}
+
+#[cfg(unix)]
+fn run_action(
+    temp: &std::path::Path,
+    stubs: &std::path::Path,
+    target: &str,
+    extra: &[(&str, &str)],
+) -> (Output, String, String) {
+    let arguments = temp.join("arguments");
+    let cargo_log = temp.join("cargo-log");
+    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/action.sh");
+    let path = format!(
+        "{}:{}",
+        stubs.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    let mut command = Command::new(script);
+    command
+        .env("PATH", path)
+        .env("FAKE_ARGUMENTS", &arguments)
+        .env("STUB_CARGO_LOG", &cargo_log)
+        .env("STUB_RELEASE_TARGET", target)
+        .env("RUNNER_TEMP", temp)
+        .env("GITHUB_ACTION_PATH", env!("CARGO_MANIFEST_DIR"))
+        .env("ORDNUNG_ACTION_MODE", "check")
+        .env("ORDNUNG_ACTION_PATH", "workspace");
+    for (key, value) in extra {
+        command.env(key, value);
+    }
+    let output = command.output().unwrap();
+    (
+        output,
+        fs::read_to_string(&arguments).unwrap_or_default(),
+        fs::read_to_string(&cargo_log).unwrap_or_default(),
+    )
+}
+
+/// A release tag gets the published binary, so a consumer does not pay for a
+/// Rust build on every invocation.
+#[cfg(unix)]
+#[test]
+fn the_action_runs_the_released_binary_when_one_matches() {
+    let temp = tempfile::tempdir().unwrap();
+    let stubs = action_stubs(temp.path());
+    let target = current_release_target();
+
+    let (output, arguments, cargo_log) = run_action(
+        temp.path(),
+        &stubs,
+        &target,
+        &[
+            ("ORDNUNG_ACTION_REF", "v1.2.3"),
+            ("ORDNUNG_ACTION_SOURCE", "PowderworksCode/ordnung"),
+        ],
+    );
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        arguments, "check\nworkspace\n",
+        "the downloaded binary is the one that ran"
+    );
+    assert!(
+        cargo_log.is_empty(),
+        "nothing was built when a release matched"
+    );
+}
+
+/// A branch or SHA ref means the consumer is tracking source, so source is what
+/// they get — and so does any download that fails for any reason.
+#[cfg(unix)]
+#[test]
+fn the_action_builds_from_source_when_no_release_applies() {
+    let temp = tempfile::tempdir().unwrap();
+    let stubs = action_stubs(temp.path());
+
+    let (output, arguments, cargo_log) = run_action(
+        temp.path(),
+        &stubs,
+        &current_release_target(),
+        &[
+            ("ORDNUNG_ACTION_REF", "main"),
+            ("ORDNUNG_ACTION_SOURCE", "PowderworksCode/ordnung"),
+        ],
+    );
+
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(arguments, "check\nworkspace\n");
+    assert_eq!(cargo_log, "built\n", "it fell back to building");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("not a release tag"),
+        "the fallback says why"
+    );
+}
+
+/// A truncated or tampered download must never be executed.
+#[cfg(unix)]
+#[test]
+fn the_action_rejects_a_release_binary_that_fails_its_checksum() {
+    let temp = tempfile::tempdir().unwrap();
+    let stubs = action_stubs(temp.path());
+    // A gh that writes a checksum for different bytes than it ships.
+    write_executable(
+        &stubs.join("gh"),
+        r#"#!/bin/sh
+if [ "$1" != "release" ] || [ "$2" != "download" ]; then exit 1; fi
+tag="$3"
+dir=""
+while [ $# -gt 0 ]; do
+  if [ "$1" = "--dir" ]; then dir="$2"; fi
+  shift
+done
+archive="ordnung-${tag}-${STUB_RELEASE_TARGET}.tar.gz"
+printf 'tampered' > "$dir/$archive"
+printf '%s  %s\n' "0000000000000000000000000000000000000000000000000000000000000000" "$archive" \
+  > "$dir/$archive.sha256"
+exit 0
+"#,
+    );
+
+    let (output, _, cargo_log) = run_action(
+        temp.path(),
+        &stubs,
+        &current_release_target(),
+        &[
+            ("ORDNUNG_ACTION_REF", "v1.2.3"),
+            ("ORDNUNG_ACTION_SOURCE", "PowderworksCode/ordnung"),
+        ],
+    );
+
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("checksum mismatch"),
+        "the mismatch is reported: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(cargo_log, "built\n", "and it built from source instead");
+}
+
+#[cfg(unix)]
+fn current_release_target() -> String {
+    let os = std::process::Command::new("uname")
+        .arg("-s")
+        .output()
+        .unwrap();
+    let arch = std::process::Command::new("uname")
+        .arg("-m")
+        .output()
+        .unwrap();
+    let os = String::from_utf8_lossy(&os.stdout).trim().to_owned();
+    let arch = String::from_utf8_lossy(&arch.stdout).trim().to_owned();
+    match (os.as_str(), arch.as_str()) {
+        ("Linux", "x86_64") => "x86_64-unknown-linux-gnu".into(),
+        ("Linux", _) => "aarch64-unknown-linux-gnu".into(),
+        ("Darwin", "x86_64") => "x86_64-apple-darwin".into(),
+        _ => "aarch64-apple-darwin".into(),
+    }
+}

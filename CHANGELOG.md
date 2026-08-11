@@ -4,6 +4,16 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- The GitHub Action no longer always builds from source. Pinned to a `v*` release
+  tag it downloads that release's binary for the runner's platform and verifies
+  its checksum before running it; a mismatch, a missing asset, an unpublished
+  platform, or a branch/SHA pin all fall back to `cargo install` and say why.
+  Added `.github/workflows/release.yml`, which runs only on a pushed version tag
+  and publishes the release only once every platform has built.
+- The Action itself is now exercised in CI, against a fixture repository it finds
+  clean and against this repository, asserting the outcome and exit code both
+  times.
+
 - Human-readable runs now end with a summary: how many results were reported,
   how many were withheld, the pass/fail/skip breakdown, the number of required
   failures, and the exit code that follows from it. Answering "did this pass?"
