@@ -242,6 +242,24 @@ sequencing is not rediscovered.
 
 ---
 
+### C4. The docs site cannot build outside one machine — **blocking Ordnung's own audit**
+
+**Today.** `site/package.json` depends on `@thepowderworks/fumadocs` by
+`file:../../docs/packages/fumadocs`. That directory is not a git repository and
+the package is not on npm, so `bun install` cannot succeed on any machine but
+yours. This is the single cause of all three `required` failures Ordnung reports
+against its own repository.
+
+**Decided:** publish or vendor the package. Full evidence, the measured shape of
+the package, three costed routes, and the follow-up work that lands here are in
+[site-dependency.md](site-dependency.md).
+
+**Note.** Unblocking the install does not by itself clear the three checks:
+`ci-exists` also wants tests for the site, and none can be written while every
+file under `site/src/` imports the blocked package.
+
+---
+
 ## D. Rough edges
 
 ### D1. Inconsistent argument shapes across subcommands
