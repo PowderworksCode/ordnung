@@ -4,17 +4,14 @@
   "private": true,
   "scripts": {
     "build": "next build --webpack",
-    "prebuild": "bun run docs:check",
     "dev": "next dev --webpack",
-    "docs:check": "node node_modules/@thepowderworks/fumadocs/dist/cli.js check content/docs",
-    "docs:check:strict": "node node_modules/@thepowderworks/fumadocs/dist/cli.js check content/docs --strict",
     "start": "serve out",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
     "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
     "@orama/orama": "^3.1.18",
-    "@thepowderworks/fumadocs": "file:../../docs/packages/fumadocs",
+    "@thepowderworks/fumadocs": "github:PowderworksCode/docs",
     "fumadocs-core": "16.11.1",
     "fumadocs-mdx": "15.1.0",
     "fumadocs-ui": "16.11.1",
@@ -33,5 +30,8 @@
     "serve": "^14.2.6",
     "tailwindcss": "^4.3.1",
     "typescript": "^6.0.3"
-  }
+  },
+  "trustedDependencies": [
+    "@thepowderworks/fumadocs"
+  ]
 }
