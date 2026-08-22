@@ -6,7 +6,7 @@
       "name": "ordnung-docs",
       "dependencies": {
         "@orama/orama": "^3.1.18",
-        "@thepowderworks/fumadocs": "file:../../docs/packages/fumadocs",
+        "@thepowderworks/fumadocs": "github:PowderworksCode/docs",
         "fumadocs-core": "16.11.1",
         "fumadocs-mdx": "15.1.0",
         "fumadocs-ui": "16.11.1",
@@ -28,6 +28,9 @@
       },
     },
   },
+  "trustedDependencies": [
+    "@thepowderworks/fumadocs",
+  ],
   "packages": {
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
 
@@ -297,7 +300,7 @@
 
     "@tailwindcss/postcss": ["@tailwindcss/postcss@4.3.3", "", { "dependencies": { "@alloc/quick-lru": "^5.2.0", "@tailwindcss/node": "4.3.3", "@tailwindcss/oxide": "4.3.3", "postcss": "^8.5.16", "tailwindcss": "4.3.3" } }, "sha512-JTSZZGQi1AyKirbLN3azmjVzef92tcX7h+iSqPdaeStyFpGpDlKvvpxeOE8njhbUanbRwr3z8DyzhICWnMtQeg=="],
 
-    "@thepowderworks/fumadocs": ["@thepowderworks/fumadocs@file:../../docs/packages/fumadocs", { "devDependencies": { "@orama/orama": "^3.1.18", "@types/mdx": "^2.0.14", "@types/react": "^19.2.17", "@types/react-dom": "^19.2.3", "fumadocs-core": "16.11.1", "fumadocs-ui": "16.11.1", "next": "16.2.10", "react": "^19.2.7", "react-dom": "^19.2.7", "typescript": "^6.0.3" }, "peerDependencies": { "@orama/orama": "^3.1.18", "fumadocs-core": "16.11.1", "fumadocs-ui": "16.11.1", "next": ">=16.2.0 <17", "react": ">=19.2.0 <20", "react-dom": ">=19.2.0 <20" } }],
+    "@thepowderworks/fumadocs": ["@thepowderworks/fumadocs@github:PowderworksCode/docs#8a1f39b", { "peerDependencies": { "@orama/orama": "^3.1.18", "fumadocs-core": "16.11.1", "fumadocs-ui": "16.11.1", "next": ">=16.2.0 <17", "react": ">=19.2.0 <20", "react-dom": ">=19.2.0 <20" } }, "PowderworksCode-docs-8a1f39b", "sha512-XDPqLvJU0rtTaC+UjHaDFR9Iah/tfeNQ4Nrzrn0uI/4jWUT4z0zhvd30j9AW5qvufJT0JEHL2UdtIGByESuy9Q=="],
 
     "@types/debug": ["@types/debug@4.1.13", "", { "dependencies": { "@types/ms": "*" } }, "sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw=="],
 

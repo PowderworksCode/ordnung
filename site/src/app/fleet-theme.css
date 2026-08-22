@@ -1,0 +1,166 @@
+/*
+ * Fleet reading system, vendored.
+ *
+ * This was @thepowderworks/fumadocs' theme.css until the shared tokens were
+ * retired from the package. Ordnung keeps the look by owning it here;
+ * override --pw-project-* below as usual.
+ */
+/*
+ * Powderworks shared reading system.
+ *
+ * Project themes should override --pw-project-accent, --pw-project-accent-strong,
+ * --pw-project-wash, and --pw-project-rule in their local global.css. Those values
+ * must maintain WCAG AA contrast in both :root and .dark.
+ */
+:root {
+  --pw-paper: oklch(0.965 0.014 82);
+  --pw-paper-raised: oklch(0.985 0.009 82);
+  --pw-ink: oklch(0.235 0.025 58);
+  --pw-ink-muted: oklch(0.48 0.025 58);
+  --pw-flame: oklch(0.63 0.17 39);
+  --pw-rust: oklch(0.47 0.135 38);
+  --pw-rule: oklch(0.79 0.025 76 / 65%);
+
+  --pw-project-accent: var(--pw-rust);
+  --pw-project-accent-strong: oklch(0.39 0.12 38);
+  --pw-project-wash: oklch(0.91 0.045 65);
+  --pw-project-rule: color-mix(in oklch, var(--pw-project-accent) 30%, var(--pw-rule));
+
+  --color-fd-background: var(--pw-paper);
+  --color-fd-foreground: var(--pw-ink);
+  --color-fd-muted: oklch(0.93 0.018 80);
+  --color-fd-muted-foreground: var(--pw-ink-muted);
+  --color-fd-popover: var(--pw-paper-raised);
+  --color-fd-popover-foreground: var(--pw-ink);
+  --color-fd-card: var(--pw-paper-raised);
+  --color-fd-card-foreground: var(--pw-ink);
+  --color-fd-border: var(--pw-rule);
+  --color-fd-primary: var(--pw-project-accent-strong);
+  --color-fd-primary-foreground: var(--pw-paper-raised);
+  --color-fd-secondary: oklch(0.915 0.022 78);
+  --color-fd-secondary-foreground: var(--pw-ink);
+  --color-fd-accent: var(--pw-project-wash);
+  --color-fd-accent-foreground: var(--pw-ink);
+  --color-fd-ring: var(--pw-project-accent);
+
+  --font-sans: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+  --pw-font-display: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+}
+
+.dark {
+  --pw-paper: oklch(0.19 0.018 62);
+  --pw-paper-raised: oklch(0.235 0.021 62);
+  --pw-ink: oklch(0.92 0.018 78);
+  --pw-ink-muted: oklch(0.72 0.02 72);
+  --pw-flame: oklch(0.72 0.15 46);
+  --pw-rust: oklch(0.72 0.13 45);
+  --pw-rule: oklch(0.43 0.025 65 / 58%);
+
+  --pw-project-accent: var(--pw-rust);
+  --pw-project-accent-strong: oklch(0.79 0.11 49);
+  --pw-project-wash: oklch(0.3 0.055 49);
+
+  --color-fd-background: var(--pw-paper);
+  --color-fd-foreground: var(--pw-ink);
+  --color-fd-muted: oklch(0.255 0.02 63);
+  --color-fd-muted-foreground: var(--pw-ink-muted);
+  --color-fd-popover: var(--pw-paper-raised);
+  --color-fd-popover-foreground: var(--pw-ink);
+  --color-fd-card: var(--pw-paper-raised);
+  --color-fd-card-foreground: var(--pw-ink);
+  --color-fd-border: var(--pw-rule);
+  --color-fd-primary: var(--pw-project-accent-strong);
+  --color-fd-primary-foreground: oklch(0.18 0.018 62);
+  --color-fd-secondary: oklch(0.275 0.022 63);
+  --color-fd-secondary-foreground: var(--pw-ink);
+  --color-fd-accent: var(--pw-project-wash);
+  --color-fd-accent-foreground: var(--pw-ink);
+  --color-fd-ring: var(--pw-project-accent);
+}
+
+html {
+  scrollbar-gutter: stable;
+  background: var(--color-fd-background);
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0 !important;
+  --removed-body-scroll-bar-size: 0 !important;
+}
+
+body {
+  color: var(--color-fd-foreground);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    linear-gradient(to right, transparent, color-mix(in oklch, var(--pw-project-rule) 22%, transparent), transparent),
+    radial-gradient(circle at 78% 0%, color-mix(in oklch, var(--pw-project-wash) 45%, transparent), transparent 32rem);
+  background-size: min(82rem, 100%) 1px, auto;
+  background-position: center 4.25rem, top right;
+  background-repeat: no-repeat;
+}
+
+::selection {
+  color: var(--pw-ink);
+  background: color-mix(in oklch, var(--pw-project-accent) 30%, var(--pw-paper));
+}
+
+.pw-nav-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-weight: 650;
+  letter-spacing: -0.018em;
+}
+
+.pw-nav-mark,
+.pw-nav-stamp {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+}
+
+.pw-nav-mark {
+  object-fit: contain;
+}
+
+.pw-nav-stamp {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--pw-project-rule);
+  color: var(--pw-project-accent-strong);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 750;
+  letter-spacing: -0.05em;
+  transform: rotate(-2deg);
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+[data-docs-title] {
+  font-family: var(--pw-font-display);
+  letter-spacing: -0.025em;
+}
+
+.prose :where(code):not(:where(pre *)) {
+  border: 1px solid var(--pw-project-rule);
+  border-radius: 0.2rem;
+  background: color-mix(in oklch, var(--pw-project-wash) 48%, transparent);
+  padding: 0.08em 0.28em;
+  font-weight: 560;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
