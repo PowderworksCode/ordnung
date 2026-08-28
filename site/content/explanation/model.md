@@ -1,0 +1,42 @@
+---
+title: The Ordnung model
+description: Why Ordnung separates observed facts, desired policy, findings, and mutation.
+---
+
+Ordnung is built around a boundary: observing a repository is different from deciding what it
+should be, and both are different from changing it. Keeping those activities separate makes a
+check trustworthy and an apply operation reviewable.
+
+## Inventory: what exists
+
+The filesystem is walked once into a typed repository graph. Projects record languages,
+ecosystems, packages, workspace relationships, capabilities, and the evidence used to classify
+them. Checks consume this shared graph rather than rediscovering the tree independently.
+
+This makes the inventory a reusable statement of observed fact. A check can disagree with policy
+without changing what Ordnung saw.
+
+## Effective policy: what should exist
+
+Standalone repositories use defaults plus `.ordnung/overrides.toml`. Fleet members combine defaults with
+central policy and only the local exceptions that the fleet explicitly permits. Unknown keys and
+unapproved overrides are configuration errors.
+
+Resolving one effective policy before evaluating checks prevents individual checks from inventing
+their own interpretation of configuration.
+
+## Findings: the difference between the two
+
+Checks compare inventory with effective policy. Every finding has a stable identifier, status,
+policy level, subject, explanation, and optional remediation. An unavailable fact is not silently
+treated as a pass.
+
+The result is diagnostic: findings report the state of the repository but do not mutate it.
+
+## Plans: proposed change made visible
+
+Managed files and GitHub settings resolve into one immutable change plan. Dry-run and apply use
+the same plan, so the preview is the operation that will be performed.
+
+This boundary is why mutation requires `--apply`. The user first sees the exact consequence of
+policy, then chooses whether to carry it out.
