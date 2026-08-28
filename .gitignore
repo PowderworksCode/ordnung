@@ -1,8 +1,1 @@
 /target/
-/site/.next/
-/site/.playwright-cli/
-/site/.source/
-/site/node_modules/
-/site/out/
-/site/output/
-/site/tsconfig.tsbuildinfo

@@ -1,0 +1,484 @@
+{
+  "schema_version": 1,
+  "command": "list-checks",
+  "ok": true,
+  "data": {
+    "schema": "ordnung.checks/1",
+    "version": "0.0.0",
+    "checks": [
+      {
+        "id": "action-badge",
+        "summary": "For a public repository that publishes a root GitHub Action, link its exact Marketplace listing from the root README.",
+        "category": "Documentation and text",
+        "scope": "repository",
+        "default_severity": "off",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "allow-auto-merge",
+        "summary": "Keep GitHub auto-merge equal to the effective github.allow_auto_merge policy; an unmanaged setting is left alone.",
+        "category": "GitHub safeguards",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "artifacts-built",
+        "summary": "Build every detected binary, site bundle, napi-rs addon, and Tauri application in GitHub Actions; run full Tauri builds on a scheduled workflow.",
+        "category": "Build and toolchain",
+        "scope": "project",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "auto-update-pr-branches",
+        "summary": "Allow and automate pull-request branch updates when strict checks require freshness.",
+        "category": "GitHub safeguards",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "branch-protection",
+        "summary": "Require pull requests and block force pushes and deletion on the default branch.",
+        "category": "GitHub safeguards",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "builds",
+        "summary": "Run every declared build, build:* or *:build package target on push or pull requests; Tauri projects also need a change-triggered compile check and a scheduled full build.",
+        "category": "Build and toolchain",
+        "scope": "project",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "changelog",
+        "summary": "Keep a root CHANGELOG.md, CHANGELOG, CHANGELOG.txt, CHANGES.md, or HISTORY.md; format and versioning style are repository choices.",
+        "category": "Documentation and text",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "ci-continue-on-error",
+        "summary": "Do not let jobs or gating test, lint, format, typecheck, and build steps hide failures with continue-on-error.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "ci-exists",
+        "summary": "Keep a push or pull-request workflow with test, lint, and format tasks for every detected language; exempt scratch project paths explicitly with ci_exists.ignore.",
+        "category": "CI safety",
+        "scope": "project",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "ci-green",
+        "summary": "Keep latest default-branch runs green for active repository-owned workflows.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "ci-job-timeout",
+        "summary": "Give every push and pull-request CI job an explicit finite timeout; reusable-workflow jobs are exempt because GitHub does not allow the setting there.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "ci-scheduled-run",
+        "summary": "Run validation on a schedule when periodic coverage should expose repository bitrot between changes.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "ci-scoped",
+        "summary": "Gate heavy pull-request jobs with workflow path filters, a job condition, or a dependency on an output-producing fanout job.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "codegen-drift",
+        "summary": "Declare each committed generator under [[codegen]] with its project root, command, and output patterns; run it in CI and follow it in the same job with git diff --exit-code or git diff --quiet.",
+        "category": "Build and toolchain",
+        "scope": "project",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "codeowners",
+        "summary": "Keep a valid CODEOWNERS file in .github/CODEOWNERS, CODEOWNERS, or docs/CODEOWNERS, in GitHub precedence order, with at least one rule that assigns an @account, @organization/team, or email owner.",
+        "category": "Repository shape",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "codespell",
+        "summary": "Run Codespell from a push or pull-request workflow using its command or registered GitHub Action.",
+        "category": "Documentation and text",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "conventional-commits",
+        "summary": "Enforce Conventional Commits in a pull-request or push workflow with a recognized semantic-title action, commitlint, cocogitto, convco, or an explicit failing PR-title validator; mention Conventional Commits in the root README or CONTRIBUTING.md.",
+        "category": "Repository shape",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "dependabot",
+        "summary": "Keep a valid .github/dependabot.yml version 2 configuration with a scheduled update covering every detected package ecosystem at its owning directory and GitHub Actions at the repository root; directory globs may be used explicitly.",
+        "category": "Dependencies",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "repository",
+          "github"
+        ]
+      },
+      {
+        "id": "dependabot-automerge",
+        "summary": "When github.allow_auto_merge is explicitly enabled, use a Dependabot-only pull-request workflow that fetches update metadata, excludes major updates, and enables auto-merge behind required checks.",
+        "category": "Dependencies",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "field-guide",
+        "summary": "At the start of work, find and read `field_guide.md`; append concise, durable discoveries that will help future agents. Keep the file in the repository, preferably at `notes/field_guide.md`.",
+        "category": "Documentation and text",
+        "scope": "repository",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "git-hooks",
+        "summary": "Commit the repository's Git hooks under .githooks, keep every hook file executable, and have the development script point core.hooksPath at it; a declared hook manager installs itself instead.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "gitignore",
+        "summary": "Ignore each ecosystem's build junk at every package scope: Cargo requires target/ and Bun, npm, pnpm, and Yarn require node_modules/; applicable ancestor .gitignore files may provide the rule.",
+        "category": "Repository shape",
+        "scope": "project",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "license",
+        "summary": "Keep a root LICENSE, LICENSE.md, LICENSE.txt, COPYING, or UNLICENSE file; GitHub SPDX classification is useful but nonstandard license text is allowed.",
+        "category": "Documentation and text",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository",
+          "github"
+        ]
+      },
+      {
+        "id": "lockfiles",
+        "summary": "Commit the correct lockfile for every detected package ecosystem.",
+        "category": "Dependencies",
+        "scope": "project",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "pinned-actions",
+        "summary": "Reference third-party GitHub Actions by commit SHA; local actions are exempt and first-party release channels are allowed.",
+        "category": "Dependencies",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "pinned-dependencies",
+        "summary": "Use exact npm/Bun dependency versions; local dependencies are exempt and Cargo ranges stay advisory because Cargo.lock owns resolution.",
+        "category": "Dependencies",
+        "scope": "project",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "project-inventory",
+        "summary": "Keep supported project boundaries and manifests detectable by Ordnung.",
+        "category": "Repository shape",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "readme",
+        "summary": "Keep a root README that opens with an H1 title in its first ten nonblank lines.",
+        "category": "Documentation and text",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "readme-quality",
+        "summary": "Keep the root README between 150 and 1,500 words with install/getting-started, usage/docs, contributing, and license sections, and no broken repository-relative Markdown links.",
+        "category": "Documentation and text",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "repo-meta",
+        "summary": "Keep repository description and issue tracking configured.",
+        "category": "Repository shape",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "reproducible-toolchain",
+        "summary": "Keep GitHub setup-action toolchain inputs off unbounded latest and wildcard versions; explicit versions and bounded stable channels are allowed.",
+        "category": "Build and toolchain",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "required-checks",
+        "summary": "Require every check posted by pull-request workflows before default-branch changes merge.",
+        "category": "GitHub safeguards",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "required-dependencies",
+        "summary": "Declare every package the effective policy requires for a project's language or ecosystem; a workspace member may inherit the declaration from its workspace root.",
+        "category": "Dependencies",
+        "scope": "project",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "ruleset-bypass",
+        "summary": "Give every active branch ruleset that gates merging at least one explicit bypass actor for emergency administration.",
+        "category": "GitHub safeguards",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "scripts",
+        "summary": "Keep detected shell scripts under the configured scripts.directory, except exact scripts.allow paths; provide the configured development script there and name its repository-relative path in the root README.",
+        "category": "Repository shape",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "secret-scanning",
+        "summary": "Keep secret scanning and push protection enabled where available.",
+        "category": "GitHub safeguards",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "stale",
+        "summary": "Keep open pull requests active within 30 days, remove branches already merged into the default branch, and enable automatic branch deletion after merge.",
+        "category": "Maintenance automation",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "stray-files",
+        "summary": "Keep root Markdown and text files conventional or explicitly listed in stray_files.allow; keep working notes under stray_files.notes.",
+        "category": "Repository shape",
+        "scope": "repository",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "strict-status-checks",
+        "summary": "Require status checks to run against the latest default-branch state.",
+        "category": "GitHub safeguards",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "stylelint",
+        "summary": "For each package containing CSS, SCSS, Sass, or Less, keep a Stylelint configuration in that package or an ancestor and run Stylelint on pushes or pull requests.",
+        "category": "Build and toolchain",
+        "scope": "project",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "test-inline",
+        "summary": "Keep tests out of source files; move an inline test module under the configured test root.",
+        "category": "Build and toolchain",
+        "scope": "project",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "test-mirror",
+        "summary": "Give every source file a mirrored test file under the configured test root, matching its path and a configured test suffix.",
+        "category": "Build and toolchain",
+        "scope": "project",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "test-retry-masking",
+        "summary": "Do not configure test commands or standard Rust and TypeScript test-runner configuration to rerun failures until they pass.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "typecheck",
+        "summary": "Keep JavaScript and TypeScript projects on an explicit type layer and run their typechecker on push or pull requests.",
+        "category": "Build and toolchain",
+        "scope": "project",
+        "default_severity": "required",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "vale",
+        "summary": "Keep a root .vale.ini with an existing relative StylesPath when declared, and run Vale from a push or pull-request workflow.",
+        "category": "Documentation and text",
+        "scope": "repository",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
+        "id": "website",
+        "summary": "Keep the repository's GitHub homepage setting pointed at its reachable HTTP(S) website.",
+        "category": "Documentation and text",
+        "scope": "repository",
+        "default_severity": "off",
+        "surfaces": [
+          "github"
+        ]
+      },
+      {
+        "id": "workflow-permissions",
+        "summary": "Keep the repository's default GITHUB_TOKEN read-only and prevent workflows from approving pull requests; jobs that need write access must grant it explicitly with a permissions block.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "required",
+        "surfaces": [
+          "github"
+        ]
+      }
+    ],
+    "removed": []
+  }
+}

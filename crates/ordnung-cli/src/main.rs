@@ -16,6 +16,7 @@ use serde::Serialize;
 
 use ordnung_cli::gh::GhClient;
 use ordnung_cli::instructions::{InstructionContext, inject, render};
+use ordnung_cli::manifest::Manifest;
 use ordnung_cli::render::{
     SeverityFloor, display_scope, file_operation_name, hidden_count, retain_reported,
     severity_name, status_name, summarize, unreached_github_checks,
@@ -29,11 +30,21 @@ use ordnung_cli::sync::{
 #[command(
     name = "ordnung",
     version,
-    about = "Keep repositories structurally in order"
+    about = "Keep repositories structurally in order",
+    args_conflicts_with_subcommands = true,
+    arg_required_else_help = true
 )]
 struct Cli {
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
+
+    /// List every check with its severity, scope, and instructions, then exit.
+    #[arg(long)]
+    list_checks: bool,
+
+    /// Emit the check manifest as JSON (only with --list-checks).
+    #[arg(long, requires = "list_checks")]
+    json: bool,
 }
 
 #[derive(Serialize)]
@@ -273,7 +284,20 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<ExitCode> {
-    match Cli::parse().command {
+    let cli = Cli::parse();
+    if cli.list_checks {
+        let manifest = Manifest::build();
+        if cli.json {
+            print_json("list-checks", true, &manifest)?;
+        } else {
+            print!("{}", manifest.to_text());
+        }
+        return Ok(ExitCode::SUCCESS);
+    }
+    let Some(command) = cli.command else {
+        bail!("a command is required; see --help or --list-checks");
+    };
+    match command {
         Command::Inspect(args) => inspect(args),
         Command::Check(args) => check(args),
         Command::RepoCheck(args) => repo_check(args),

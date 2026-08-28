@@ -1,0 +1,70 @@
+---
+title: CLI reference
+description: Commands, arguments, and options for the Ordnung command-line application.
+order: 1
+---
+
+Ordnung uses the following top-level command structure:
+
+```text
+ordnung <COMMAND>
+```
+
+Use `ordnung <COMMAND> --help` for help corresponding to the installed version.
+
+## Listing checks
+
+```sh
+ordnung --list-checks [--json]
+```
+
+Prints every check the binary carries, grouped by category, with its default
+severity, scope, and instructions. With `--json` it emits the check manifest —
+the same document the [checks reference](/reference/checks) is tested against.
+
+## Repository commands
+
+```sh
+ordnung inspect [PATH] [--json]
+ordnung check [PATH] [--json]
+ordnung repo-check [PATH] --repo OWNER/NAME [--json]
+ordnung fix [PATH] [--apply] [--json]
+ordnung instructions [PATH] [--write AGENTS.md] [--write CLAUDE.md]
+```
+
+## Fleet commands
+
+```sh
+ordnung fleet check FLEET_TOML [--json]
+ordnung fleet sync FLEET_TOML --repo OWNER/NAME --repo-root PATH [--apply] [--json]
+ordnung fleet github-check FLEET_TOML [--json]
+ordnung fleet github-sync-settings FLEET_TOML --repo OWNER/NAME [--apply] [--json]
+ordnung fleet github-sync FLEET_TOML --repo OWNER/NAME [--apply] [--json]
+ordnung fleet github-sync-all FLEET_TOML [--apply] [--json]
+```
+
+## GitHub commands
+
+```sh
+ordnung github inspect OWNER/REPO [--json]
+ordnung github check OWNER/REPO [--repo-root PATH] [--json]
+ordnung github sync-settings OWNER/REPO [--repo-root PATH] [--apply] [--json]
+```
+
+Commands that can mutate state remain dry-run operations unless `--apply` is supplied explicitly.
+
+## Machine-readable output
+
+Every `--json` response has the same envelope:
+
+```json
+{
+  "schema_version": 1,
+  "command": "check",
+  "ok": false,
+  "data": {}
+}
+```
+
+The command-specific payload is always under `data`. Exit code `0` means clean or successfully
+applied local state, `1` means policy drift, and `2` means an operational or configuration error.
