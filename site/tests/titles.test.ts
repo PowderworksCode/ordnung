@@ -16,7 +16,7 @@ const out = mkdtempSync(join(tmpdir(), "ordnung-titles-"));
 afterAll(() => rmSync(out, { recursive: true, force: true }));
 
 await build(join(import.meta.dir, "..", "content"), out, {
-  siteUrl: "https://ordnung.powderworks.dev",
+  siteUrl: "https://ordnung.dev",
   name: SITE_NAME,
   description: "Repository order, made explicit.",
   github: "PowderworksCode/ordnung",

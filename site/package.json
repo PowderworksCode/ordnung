@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "rm -rf out && powderworks-docs build content --out out --site-url https://ordnung.powderworks.dev --name Ordnung --description \"Repository order, made explicit.\" --github PowderworksCode/ordnung --license MIT --logo /icon.svg --static public",
+    "build": "rm -rf out && powderworks-docs build content --out out --site-url https://ordnung.dev --name Ordnung --description \"Repository order, made explicit.\" --github PowderworksCode/ordnung --license MIT --logo /icon.png --static public",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "test": "bun test"
