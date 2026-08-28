@@ -1,6 +1,7 @@
 ---
 title: CLI reference
 description: Commands, arguments, and options for the Ordnung command-line application.
+order: 1
 ---
 
 Ordnung uses the following top-level command structure:
@@ -10,6 +11,16 @@ ordnung <COMMAND>
 ```
 
 Use `ordnung <COMMAND> --help` for help corresponding to the installed version.
+
+## Listing checks
+
+```sh
+ordnung --list-checks [--json]
+```
+
+Prints every check the binary carries, grouped by category, with its default
+severity, scope, and instructions. With `--json` it emits the check manifest —
+the same document the [checks reference](/reference/checks) is tested against.
 
 ## Repository commands
 

@@ -813,3 +813,37 @@ fn current_release_target() -> String {
         _ => "aarch64-apple-darwin".into(),
     }
 }
+
+#[test]
+fn list_checks_prints_every_check_in_both_forms() {
+    let text = ordnung(&["--list-checks"]);
+    assert!(text.status.success());
+    let listing = String::from_utf8_lossy(&text.stdout);
+    assert!(listing.contains("Repository shape"));
+    assert!(listing.contains("branch-protection"));
+
+    let json = ordnung(&["--list-checks", "--json"]);
+    assert!(json.status.success());
+    let envelope: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
+    assert_eq!(envelope["schema_version"], 1);
+    assert_eq!(envelope["command"], "list-checks");
+    assert_eq!(envelope["ok"], true);
+    let manifest = &envelope["data"];
+    assert_eq!(manifest["schema"], "ordnung.checks/1");
+    let checks = manifest["checks"].as_array().unwrap();
+    assert!(!checks.is_empty());
+
+    // Every check the text form lists appears in the manifest, and vice versa.
+    for check in checks {
+        let id = check["id"].as_str().unwrap();
+        assert!(listing.contains(id), "text listing is missing {id}");
+        assert!(!check["summary"].as_str().unwrap().is_empty());
+        assert!(!check["surfaces"].as_array().unwrap().is_empty());
+    }
+}
+
+#[test]
+fn list_checks_refuses_to_combine_with_a_command() {
+    let combined = ordnung(&["check", "--list-checks"]);
+    assert!(!combined.status.success());
+}

@@ -1,0 +1,37 @@
+name: docs
+
+# The documentation is checked against the binary, not maintained beside it.
+#
+# This is a workflow of its own rather than a job in `ci.yml`, because `ci.yml`
+# skips pull requests that only touch prose — and a prose-only pull request is
+# exactly when the documentation can drift away from the binary.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      # The manifest is generated from the binary, so a check added, renamed
+      # or withdrawn without regenerating it fails here rather than reaching
+      # the website.
+      - name: The exported check manifest is current
+        run: scripts/checks-manifest.sh --check
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+        working-directory: site
+      # Checks the other direction: every check is documented at its real
+      # severity, and no page claims a check the binary does not carry.
+      - run: bun test
+        working-directory: site
