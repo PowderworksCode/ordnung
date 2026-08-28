@@ -1,11 +1,11 @@
 ---
 title: How-to guides
 description: Accomplish a specific repository or fleet task.
-order: 2
+order: 3
 ---
 
 Each one is a focused recipe for a single job, assuming you already know the
-basics from the [tutorial](/tutorials/first-check).
+basics from [getting started](/getting-started).
 
 - [Check an existing repository](/how-to-guides/check-a-repository) — Evaluate a repository locally and capture its findings for another tool.
 - [Synchronize a fleet member](/how-to-guides/sync-a-fleet-member) — Preview and apply centrally managed configuration to one local repository.

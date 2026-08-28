@@ -1,7 +1,7 @@
 ---
 title: Explanation
 description: Understand why Ordnung separates observation, policy, and mutation.
-order: 4
+order: 5
 ---
 
 Background and reasoning — why Ordnung is shaped the way it is, rather than how
