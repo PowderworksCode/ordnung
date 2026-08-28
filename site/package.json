@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "rm -rf out && powderworks-docs build content --out out --site-url https://ordnung.dev --name Ordnung --description \"Repository order, made explicit.\" --github PowderworksCode/ordnung --license MIT --logo /icon.png --static public",
+    "build": "rm -rf out && powderworks-docs build content --out out --site-url https://ordnung.dev --name Ordnung --description \"Repository order, made explicit.\" --github PowderworksCode/ordnung --logo /icon.png --copyright \"Zack Maril\" --wordmark Ordnung --wordmark-font '\"Fredoka\"' --wordmark-woff2 /fredoka-latin.woff2 --wordmark \"The Powderworks Agentic Code Consortium\" --wordmark-font '\"IM Fell English SC\"' --wordmark-woff2 /im-fell-english-sc-latin.woff2 --wordmark Powderworks --wordmark-font '\"IM Fell English SC\"' --wordmark-woff2 /im-fell-english-sc-latin.woff2 --static public",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "test": "bun test"

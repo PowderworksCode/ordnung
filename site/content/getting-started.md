@@ -1,6 +1,7 @@
 ---
-title: Inspect your first repository
+title: Getting started
 description: Install Ordnung, create a small repository, and interpret its first structural check.
+order: 1
 ---
 
 In this tutorial, we will install Ordnung and use it to inspect a small Rust repository. By the
