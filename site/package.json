@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "rm -rf out && powderworks-docs build content --out out --site-url https://ordnung.dev --name Ordnung --description \"Repository order, made explicit.\" --github PowderworksCode/ordnung --logo /icon.png --copyright \"Zack Maril\" --wordmark Ordnung --wordmark-font '\"Fredoka\"' --wordmark-woff2 /fredoka-latin.woff2 --wordmark \"The Powderworks Agentic Code Consortium\" --wordmark-font '\"IM Fell English SC\"' --wordmark-woff2 /im-fell-english-sc-latin.woff2 --wordmark Powderworks --wordmark-font '\"IM Fell English SC\"' --wordmark-woff2 /im-fell-english-sc-latin.woff2 --static public",
+    "build": "rm -rf out && powderworks-docs build content --out out --site ordnung --static public",
+    "social": "python3 node_modules/powderworks-docs/tools/social-card.py --site ordnung",
+    "social:check": "python3 node_modules/powderworks-docs/tools/social-card.py --site ordnung --check",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "test": "bun test"
