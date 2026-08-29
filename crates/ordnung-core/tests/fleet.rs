@@ -560,10 +560,10 @@ fn an_unknown_stage_name_in_policy_is_rejected() {
 }
 
 /// A substituting entry writes the member into its placeholders, leaves GitHub
-/// expressions alone, and refuses a placeholder it does not know — a typo
+/// expressions alone, and refuses a placeholder it does not know — a mistake
 /// should fail the plan, not ship literally to every member.
 #[test]
-fn substituting_entry_fills_member_placeholders_and_rejects_typos() {
+fn substituting_entry_fills_member_placeholders_and_rejects_unknown_ones() {
     let fleet = tempfile::tempdir().unwrap();
     let member = tempfile::tempdir().unwrap();
     fs::create_dir_all(fleet.path().join("managed")).unwrap();
@@ -615,9 +615,11 @@ fn substituting_entry_fills_member_placeholders_and_rejects_typos() {
     let content = String::from_utf8(changes[0].content().unwrap().to_vec()).unwrap();
     assert!(content.contains("STRAITJACKET_VERSION"));
 
+    // An unrecognized placeholder, spelled correctly: the plan refuses what it
+    // cannot fill in, rather than shipping the braces to every member.
     fs::write(
         fleet.path().join("managed/release.yml"),
-        "misspelled: {{nmae}}\n",
+        "unknown: {{repository}}\n",
     )
     .unwrap();
     let error = plan_managed_changes(
@@ -627,7 +629,7 @@ fn substituting_entry_fills_member_placeholders_and_rejects_typos() {
         &resolved(fleet.path(), vec![substituting]),
     )
     .unwrap_err();
-    assert!(error.to_string().contains("{{nmae}}"), "{error}");
+    assert!(error.to_string().contains("{{repository}}"), "{error}");
 }
 
 /// substitute is a per-file contract; a directory source cannot carry it.
