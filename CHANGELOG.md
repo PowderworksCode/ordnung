@@ -4,6 +4,11 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- Managed files keep their executable bit. A distributed Git hook that arrived
+  without it was a file Git silently declined to run, which looks exactly like
+  a repository whose hooks all pass. The mode is part of what "already
+  correct" means, so a hook whose bit was stripped locally is planned back.
+
 - A fleet member may declare its `website`, and a managed entry with
   `substitute = true` may write it as `{{website}}`. A repository name is not an
   address, so the fleet states it rather than deriving it; a file that hands out
