@@ -13,8 +13,8 @@ repository = "https://github.com/PowderworksCode/ordnung"
 anyhow = "1.0.104"
 base64 = "0.22.1"
 clap = { version = "4.6.1", features = ["derive"] }
-entl-codebase = { git = "https://github.com/PowderworksCode/entl", rev = "6058f9018aeac94e94769df10854a2befe529dee" }
-entl-github = { git = "https://github.com/PowderworksCode/entl", rev = "6058f9018aeac94e94769df10854a2befe529dee" }
+entl-codebase = { git = "https://github.com/PowderworksCode/entl", rev = "8464e5f8a313c3e211c10782b07d2ba88f590d3e" }
+entl-github = { git = "https://github.com/PowderworksCode/entl", rev = "8464e5f8a313c3e211c10782b07d2ba88f590d3e" }
 globset = "0.4.19"
 ignore = "0.4.31"
 libc = "0.2.189"

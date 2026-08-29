@@ -83,6 +83,7 @@ These read repository settings through the `gh` CLI, so they report in
 | `ci-exists` | required | project | Keep a push or pull-request workflow with test, lint, and format tasks for every detected language; exempt scratch project paths explicitly with `ci_exists.ignore`. |
 | `ci-green` | required | repository | Keep latest default-branch runs green for active repository-owned workflows. |
 | `ci-job-timeout` | recommended | repository | Give every push and pull-request CI job an explicit finite timeout; reusable-workflow jobs are exempt because GitHub does not allow the setting there. |
+| `ci-matrix-scoped` | recommended | repository | Let every pull-request matrix job short-circuit: scope the workflow with path filters, condition the job, or expand the matrix from a fanout job that inspects the change. |
 | `ci-scheduled-run` | recommended | repository | Run validation on a schedule when periodic coverage should expose repository bitrot between changes. |
 | `ci-scoped` | recommended | repository | Gate heavy pull-request jobs with workflow path filters, a job condition, or a dependency on an output-producing fanout job. |
 | `git-hooks` | off (opt-in) | repository | Commit the repository's Git hooks under `.githooks`, keep every hook file executable, and have the development script point `core.hooksPath` at it; a declared hook manager installs itself instead. |

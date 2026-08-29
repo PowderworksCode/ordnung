@@ -9,6 +9,7 @@ mod ci_continue_on_error;
 mod ci_exists;
 mod ci_green;
 mod ci_job_timeout;
+mod ci_matrix_scoped;
 mod ci_scheduled_run;
 mod ci_scoped;
 mod codegen_drift;
