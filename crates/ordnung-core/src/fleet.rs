@@ -971,7 +971,7 @@ pub fn apply_changes(member_root: &Path, changes: &[ManagedChange]) -> Result<()
 /// arrives without it is a file Git silently declines to run, which looks
 /// exactly like a repository whose hooks all pass.
 #[cfg(unix)]
-fn set_executable(path: &Path, executable: bool) -> Result<()> {
+pub(crate) fn set_executable(path: &Path, executable: bool) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
     let metadata = fs::metadata(path).map_err(|source| Error::io(path, source))?;
     let mut permissions = metadata.permissions();
@@ -990,7 +990,7 @@ fn set_executable(path: &Path, executable: bool) -> Result<()> {
 }
 
 #[cfg(not(unix))]
-fn set_executable(_path: &Path, _executable: bool) -> Result<()> {
+pub(crate) fn set_executable(_path: &Path, _executable: bool) -> Result<()> {
     Ok(())
 }
 
