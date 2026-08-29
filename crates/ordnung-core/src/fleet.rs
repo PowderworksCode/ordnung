@@ -701,6 +701,14 @@ pub struct ManagedEntry {
     pub when: Option<ProjectSelector>,
     #[serde(default)]
     pub only: Vec<String>,
+    /// Substitute member placeholders into the source before comparing and
+    /// writing: `{{repo}}` (owner/name), `{{name}}` (repository name), and
+    /// `{{NAME}}` (the name uppercased with `-` as `_`, for environment
+    /// variables). GitHub expressions (`${{ ... }}`) pass through untouched;
+    /// any other bare `{{` is an error, so a misspelled placeholder fails the
+    /// plan instead of shipping literally.
+    #[serde(default)]
+    pub substitute: bool,
 }
 
 /// What a managed entry asserts about its destination in each member repository.
@@ -852,6 +860,12 @@ pub fn plan_managed_changes(
                 ManagedState::Present => {
                     let source = fleet_root.join(entry.source.as_ref().expect("validated"));
                     if source.is_dir() {
+                        if entry.substitute {
+                            return Err(Error::Config(format!(
+                                "managed entry {:?} sets substitute = true, which requires a file source, not a directory",
+                                entry.name
+                            )));
+                        }
                         plan_directory(
                             &entry.name,
                             &source,
@@ -860,11 +874,16 @@ pub fn plan_managed_changes(
                             &mut planned,
                         )?;
                     } else {
+                        let substitution = entry
+                            .substitute
+                            .then(|| Substitution::for_member(&entry.name, member_repo))
+                            .transpose()?;
                         plan_file(
                             &entry.name,
                             &source,
                             &destination,
                             &member_root,
+                            substitution.as_ref(),
                             &mut planned,
                         )?;
                     }
@@ -938,14 +957,68 @@ fn target_bases(member_root: &Path, inventory: &Inventory, entry: &ManagedEntry)
     }
 }
 
+/// The member-specific values a substituting entry writes into its source.
+struct Substitution {
+    repo: String,
+    name: String,
+    upper: String,
+}
+
+impl Substitution {
+    fn for_member(entry: &str, member_repo: &str) -> Result<Self> {
+        let name = member_repo.split('/').next_back().ok_or_else(|| {
+            Error::Config(format!(
+                "managed entry {entry:?} cannot substitute into malformed repository {member_repo:?}"
+            ))
+        })?;
+        Ok(Self {
+            repo: member_repo.to_owned(),
+            name: name.to_owned(),
+            upper: name.to_ascii_uppercase().replace('-', "_"),
+        })
+    }
+
+    /// Replaces the three placeholders, then refuses any `{{` that is not a
+    /// GitHub expression (`${{ ... }}`): a misspelled placeholder should fail
+    /// the plan, not ship literally to every member.
+    fn apply(&self, entry: &str, source: &Path, content: Vec<u8>) -> Result<Vec<u8>> {
+        let text = String::from_utf8(content).map_err(|_| {
+            Error::Config(format!(
+                "managed entry {entry:?} sets substitute = true, but {} is not UTF-8",
+                source.display()
+            ))
+        })?;
+        let text = text
+            .replace("{{repo}}", &self.repo)
+            .replace("{{name}}", &self.name)
+            .replace("{{NAME}}", &self.upper);
+        for (at, _) in text.match_indices("{{") {
+            if text.as_bytes()[..at].last() == Some(&b'$') {
+                continue;
+            }
+            let token: String = text[at..].chars().take(24).collect();
+            return Err(Error::Config(format!(
+                "managed entry {entry:?} leaves an unrecognized placeholder in {}: {token:?} \
+                 (known placeholders are {{{{repo}}}}, {{{{name}}}}, and {{{{NAME}}}})",
+                source.display()
+            )));
+        }
+        Ok(text.into_bytes())
+    }
+}
+
 fn plan_file(
     managed: &str,
     source: &Path,
     destination: &Path,
     member_root: &Path,
+    substitution: Option<&Substitution>,
     planned: &mut BTreeMap<PathBuf, ManagedChange>,
 ) -> Result<()> {
-    let content = fs::read(source).map_err(|error| Error::io(source, error))?;
+    let mut content = fs::read(source).map_err(|error| Error::io(source, error))?;
+    if let Some(substitution) = substitution {
+        content = substitution.apply(managed, source, content)?;
+    }
     let current = fs::read(destination).ok();
     if current.as_deref() == Some(content.as_slice()) {
         return Ok(());

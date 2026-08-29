@@ -17,6 +17,7 @@ fn entry(source: &str, destination: &str) -> ManagedEntry {
         relative_to: RelativeTo::Repo,
         when: None,
         only: Vec::new(),
+        substitute: false,
     }
 }
 
@@ -116,6 +117,7 @@ fn tombstone_is_an_explicit_delete() {
         relative_to: RelativeTo::Repo,
         when: None,
         only: Vec::new(),
+        substitute: false,
     };
 
     let changes = plan_managed_changes(
@@ -555,4 +557,95 @@ fn an_unknown_stage_name_in_policy_is_rejected() {
         .unwrap_err()
         .to_string();
     assert!(error.contains("unknown stage"), "{error}");
+}
+
+/// A substituting entry writes the member into its placeholders, leaves GitHub
+/// expressions alone, and refuses a placeholder it does not know — a typo
+/// should fail the plan, not ship literally to every member.
+#[test]
+fn substituting_entry_fills_member_placeholders_and_rejects_typos() {
+    let fleet = tempfile::tempdir().unwrap();
+    let member = tempfile::tempdir().unwrap();
+    fs::create_dir_all(fleet.path().join("managed")).unwrap();
+    fs::write(
+        fleet.path().join("managed/release.yml"),
+        "# {{name}} release for {{repo}}\nenv: {{NAME}}_VERSION\nexpr: ${{ matrix.target }}\n",
+    )
+    .unwrap();
+    let inventory = inspect_repository(member.path(), &InventoryOptions::default()).unwrap();
+
+    let mut substituting = entry("managed/release.yml", ".github/workflows/release.yml");
+    substituting.substitute = true;
+    let changes = plan_managed_changes(
+        "PowderworksCode/herdr-muster",
+        member.path(),
+        &inventory,
+        &resolved(fleet.path(), vec![substituting.clone()]),
+    )
+    .unwrap();
+    assert_eq!(changes.len(), 1);
+    let content = String::from_utf8(changes[0].content().unwrap().to_vec()).unwrap();
+    assert_eq!(
+        content,
+        "# herdr-muster release for PowderworksCode/herdr-muster\n\
+         env: HERDR_MUSTER_VERSION\nexpr: ${{ matrix.target }}\n"
+    );
+
+    // Applying makes the plan converge: the substituted bytes are the state.
+    apply_changes(member.path(), &changes).unwrap();
+    let clean = plan_managed_changes(
+        "PowderworksCode/herdr-muster",
+        member.path(),
+        &inventory,
+        &resolved(fleet.path(), vec![substituting.clone()]),
+    )
+    .unwrap();
+    assert!(clean.is_empty());
+
+    // A different member plans different bytes from the same source.
+    let other = tempfile::tempdir().unwrap();
+    let other_inventory = inspect_repository(other.path(), &InventoryOptions::default()).unwrap();
+    let changes = plan_managed_changes(
+        "PowderworksCode/straitjacket",
+        other.path(),
+        &other_inventory,
+        &resolved(fleet.path(), vec![substituting.clone()]),
+    )
+    .unwrap();
+    let content = String::from_utf8(changes[0].content().unwrap().to_vec()).unwrap();
+    assert!(content.contains("STRAITJACKET_VERSION"));
+
+    fs::write(
+        fleet.path().join("managed/release.yml"),
+        "misspelled: {{nmae}}\n",
+    )
+    .unwrap();
+    let error = plan_managed_changes(
+        "PowderworksCode/straitjacket",
+        other.path(),
+        &other_inventory,
+        &resolved(fleet.path(), vec![substituting]),
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("{{nmae}}"), "{error}");
+}
+
+/// substitute is a per-file contract; a directory source cannot carry it.
+#[test]
+fn substituting_directory_source_is_rejected() {
+    let fleet = tempfile::tempdir().unwrap();
+    let member = tempfile::tempdir().unwrap();
+    fs::create_dir_all(fleet.path().join("managed/styles")).unwrap();
+    fs::write(fleet.path().join("managed/styles/a.yml"), "a\n").unwrap();
+    let inventory = inspect_repository(member.path(), &InventoryOptions::default()).unwrap();
+    let mut substituting = entry("managed/styles", ".vale/styles");
+    substituting.substitute = true;
+    let error = plan_managed_changes(
+        "owner/member",
+        member.path(),
+        &inventory,
+        &resolved(fleet.path(), vec![substituting]),
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("file source"), "{error}");
 }

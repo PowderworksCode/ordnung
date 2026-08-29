@@ -64,6 +64,29 @@ rather than the whole check list.
 Revisions are pinned deliberately: an inherited layer can write files into every
 member repository, so a moving reference would make plans non-deterministic.
 
+## Substituting managed files
+
+A `[[managed]]` entry with `substitute = true` writes the member into its
+source before comparing and applying, so one fleet file can carry
+repository-specific content — a release workflow that names its binary, an
+install script that names its repository:
+
+```toml
+[[managed]]
+name = "release-workflow"
+source = "managed/publishing/release.yml"
+destination = ".github/workflows/release.yml"
+substitute = true
+only = ["PowderworksCode/straitjacket"]
+```
+
+Three placeholders exist: `{{repo}}` (owner/name), `{{name}}` (the repository
+name), and `{{NAME}}` (the name uppercased with `-` as `_`, for environment
+variables). GitHub expressions (`${{ ... }}`) pass through untouched; any
+other bare `{{` fails the plan, so a misspelled placeholder cannot ship
+literally to every member. Substitution requires a UTF-8 file source, not a
+directory.
+
 ## Other configuration keys
 
 `.ordnung/overrides.toml` also accepts keys consumed directly by checks:

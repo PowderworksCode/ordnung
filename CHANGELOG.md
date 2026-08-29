@@ -4,6 +4,12 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- Managed entries accept `substitute = true`: the plan writes the member into
+  `{{repo}}`, `{{name}}`, and `{{NAME}}` placeholders in the source file, so
+  one fleet file can carry repository-specific content such as a release
+  workflow or an install script. GitHub expressions pass through untouched,
+  and an unrecognized bare `{{` fails the plan rather than shipping literally.
+
 - The GitHub Action no longer always builds from source. Pinned to a `v*` release
   tag it downloads that release's binary for the runner's platform and verifies
   its checksum before running it; a mismatch, a missing asset, an unpublished
