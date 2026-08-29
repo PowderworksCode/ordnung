@@ -18,6 +18,33 @@ pub(crate) static CHECK: CheckDefinition = CheckDefinition {
 
 registry::submit! { CheckRegistration(&CHECK) }
 
+/// Whether the project declares a package whose ecosystem implies an
+/// optionally typed language — a `package.json`, in practice.
+///
+/// This is what separates a JavaScript project from a directory containing a
+/// JavaScript file. A tree-sitter grammar crate carries a `grammar.js`, a Rust
+/// crate can carry a build script, and neither owes anyone a tsconfig. The
+/// package's own language is not compared, because a manifest that says
+/// `javascript` routinely governs a directory of TypeScript.
+fn declares_optionally_typed_package(
+    context: &RepositoryCheckContext<'_>,
+    project: &crate::inventory::Project,
+) -> bool {
+    context
+        .inventory
+        .packages
+        .iter()
+        .filter(|package| package.root == project.root)
+        .any(|package| {
+            package
+                .ecosystem_profile()
+                .implied_languages
+                .iter()
+                .filter_map(|implied| language_conventions(implied))
+                .any(|conventions| conventions.typecheck.is_some())
+        })
+}
+
 fn run(
     definition: &'static CheckDefinition,
     context: &RepositoryCheckContext<'_>,
@@ -30,6 +57,13 @@ fn run(
             .iter()
             .filter_map(|language| language_profile(language.as_str()))
         {
+            // A type layer belongs to a package, not to a file extension. A
+            // Rust crate that carries a grammar.js, a build script, or a demo
+            // snippet is not a JavaScript project owing a tsconfig, and asking
+            // it for one is how a checker loses its reader.
+            if !declares_optionally_typed_package(context, project) {
+                continue;
+            }
             let Some(typecheck) =
                 language_conventions(profile).and_then(|conventions| conventions.typecheck)
             else {
