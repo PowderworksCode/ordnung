@@ -5,7 +5,7 @@ use ordnung_core::{Severity, check_definition, check_definitions, check_ids, def
 #[test]
 fn registered_checks_are_complete_unique_and_sorted() {
     let definitions = check_definitions();
-    assert_eq!(definitions.len(), 47);
+    assert_eq!(definitions.len(), 50);
     assert!(definitions.windows(2).all(|pair| pair[0].id < pair[1].id));
     assert!(
         definitions

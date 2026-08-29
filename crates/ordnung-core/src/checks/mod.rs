@@ -20,6 +20,7 @@ mod dependabot_automerge;
 mod field_guide;
 mod git_hooks;
 mod gitignore;
+mod hawk;
 mod license;
 mod lockfiles;
 mod pinned_actions;
@@ -34,6 +35,7 @@ mod required_dependencies;
 mod ruleset_bypass;
 mod scripts;
 mod secret_scanning;
+mod shellcheck;
 mod stale;
 mod stray_files;
 mod strict_status_checks;
@@ -64,3 +66,4 @@ fn examples(values: &[String]) -> String {
         shown
     }
 }
+mod zizmor;

@@ -228,6 +228,16 @@
         ]
       },
       {
+        "id": "hawk",
+        "summary": "In Rust repositories, run Astral's hawk (cargo hawk) from a push or pull-request workflow to flag unnecessarily public APIs.",
+        "category": "Build and toolchain",
+        "scope": "repository",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
         "id": "license",
         "summary": "Keep a root LICENSE, LICENSE.md, LICENSE.txt, COPYING, or UNLICENSE file; GitHub SPDX classification is useful but nonstandard license text is allowed.",
         "category": "Documentation and text",
@@ -369,6 +379,16 @@
         ]
       },
       {
+        "id": "shellcheck",
+        "summary": "When the repository carries shell scripts, run ShellCheck over them from a push or pull-request workflow using its command or a registered GitHub Action.",
+        "category": "Build and toolchain",
+        "scope": "repository",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
         "id": "stale",
         "summary": "Keep open pull requests active within 30 days, remove branches already merged into the default branch, and enable automatic branch deletion after merge.",
         "category": "Maintenance automation",
@@ -476,6 +496,16 @@
         "default_severity": "required",
         "surfaces": [
           "github"
+        ]
+      },
+      {
+        "id": "zizmor",
+        "summary": "Run zizmor static analysis over the repository's GitHub Actions workflows from a push or pull-request workflow, using its command or the zizmor-action.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "off",
+        "surfaces": [
+          "repository"
         ]
       }
     ],

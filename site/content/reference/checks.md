@@ -86,6 +86,7 @@ These read repository settings through the `gh` CLI, so they report in
 | `ci-scheduled-run` | recommended | repository | Run validation on a schedule when periodic coverage should expose repository bitrot between changes. |
 | `ci-scoped` | recommended | repository | Gate heavy pull-request jobs with workflow path filters, a job condition, or a dependency on an output-producing fanout job. |
 | `git-hooks` | off (opt-in) | repository | Commit the repository's Git hooks under `.githooks`, keep every hook file executable, and have the development script point `core.hooksPath` at it; a declared hook manager installs itself instead. |
+| `zizmor` | off (opt-in) | repository | Run [zizmor](https://zizmor.sh) static analysis over the repository's GitHub Actions workflows from a push or pull-request workflow, using its command or the zizmor-action. |
 | `test-retry-masking` | required | repository | Do not configure test commands or standard Rust and TypeScript test-runner configuration to rerun failures until they pass. |
 | `workflow-permissions` | required | repository | Keep the repository's default `GITHUB_TOKEN` read-only and prevent workflows from approving pull requests; jobs that need write access must grant it explicitly with a permissions block. |
 
@@ -96,7 +97,9 @@ These read repository settings through the `gh` CLI, so they report in
 | `artifacts-built` | recommended | project | Build every detected binary, site bundle, napi-rs addon, and Tauri application in GitHub Actions; run full Tauri builds on a scheduled workflow. |
 | `builds` | required | project | Run every declared `build`, `build:*` or `*:build` package target on push or pull requests; Tauri projects also need a change-triggered compile check and a scheduled full build. |
 | `codegen-drift` | recommended | project | Declare each committed generator under `[[codegen]]` with its project root, command, and output patterns; run it in CI and follow it in the same job with `git diff --exit-code` or `git diff --quiet`. |
+| `hawk` | off (opt-in) | repository | In Rust repositories, run [Astral's hawk](https://github.com/astral-sh/hawk) (`cargo hawk`) from a push or pull-request workflow to flag unnecessarily public APIs. |
 | `reproducible-toolchain` | required | repository | Keep GitHub setup-action toolchain inputs off unbounded latest and wildcard versions; explicit versions and bounded stable channels are allowed. |
+| `shellcheck` | off (opt-in) | repository | When the repository carries shell scripts, run [ShellCheck](https://www.shellcheck.net) over them from a push or pull-request workflow using its command or a registered GitHub Action. |
 | `stylelint` | off (opt-in) | project | For each package containing CSS, SCSS, Sass, or Less, keep a Stylelint configuration in that package or an ancestor and run Stylelint on pushes or pull requests. |
 | `test-inline` | off (opt-in) | project | Keep tests out of source files; move an inline test module under the configured test root. |
 | `test-mirror` | off (opt-in) | project | Give every source file a mirrored test file under the configured test root, matching its path and a configured test suffix. |

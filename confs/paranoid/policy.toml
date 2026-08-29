@@ -14,6 +14,9 @@ path = "../recommended"
 # Specific linters. Adopting this tier means adopting these tools.
 vale = { severity = "required", allow_override = true }
 stylelint = { severity = "required", allow_override = true }
+shellcheck = { severity = "required", allow_override = true }
+zizmor = { severity = "required", allow_override = true }
+hawk = { severity = "required", allow_override = true }
 
 # Ordnung's own conventions, which are not industry practice.
 field-guide = { severity = "required", allow_override = true }

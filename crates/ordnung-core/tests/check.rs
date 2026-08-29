@@ -409,12 +409,15 @@ fn house_preference_checks_ship_off() {
     for check in [
         "action-badge",
         "field-guide",
+        "hawk",
+        "shellcheck",
         "stray-files",
         "stylelint",
         "test-inline",
         "test-mirror",
         "vale",
         "website",
+        "zizmor",
     ] {
         assert_eq!(policy[check], Severity::Off, "{check}");
     }
@@ -2213,4 +2216,79 @@ fn git_hooks_ignores_files_that_are_not_hook_names() {
         "{}",
         result.message
     );
+}
+
+/// The three tool checks skip when their subject is absent, fail when the
+/// subject exists with no workflow coverage, and pass when a change-triggered
+/// workflow runs the tool by command, runner, cargo subcommand, or action.
+#[test]
+fn lint_tool_checks_skip_fail_and_pass_on_workflow_coverage() {
+    let repo = tempfile::tempdir().unwrap();
+    fs::write(repo.path().join("README.md"), "# Fixture\n").unwrap();
+    let inventory = inspect_repository(repo.path(), &InventoryOptions::default()).unwrap();
+    let report =
+        run_repository_checks_with_repo_config(repo.path(), &inventory, &RepoConfig::default());
+    for check in ["hawk", "shellcheck", "zizmor"] {
+        assert_eq!(
+            report
+                .results
+                .iter()
+                .find(|result| result.check == check)
+                .unwrap()
+                .status,
+            CheckStatus::Skip,
+            "{check} without its subject"
+        );
+    }
+
+    fs::create_dir_all(repo.path().join(".github/workflows")).unwrap();
+    fs::create_dir_all(repo.path().join("src")).unwrap();
+    fs::write(
+        repo.path().join("Cargo.toml"),
+        "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\nedition = \"2021\"\n",
+    )
+    .unwrap();
+    fs::write(repo.path().join("src/lib.rs"), "pub fn fixture() {}\n").unwrap();
+    fs::write(repo.path().join("scripts.sh"), "#!/bin/sh\necho fixture\n").unwrap();
+    fs::write(
+        repo.path().join(".github/workflows/ci.yml"),
+        "on: pull_request\njobs:\n  build:\n    steps:\n      - run: cargo test\n",
+    )
+    .unwrap();
+    let inventory = inspect_repository(repo.path(), &InventoryOptions::default()).unwrap();
+    let report =
+        run_repository_checks_with_repo_config(repo.path(), &inventory, &RepoConfig::default());
+    for check in ["hawk", "shellcheck", "zizmor"] {
+        assert_eq!(
+            report
+                .results
+                .iter()
+                .find(|result| result.check == check)
+                .unwrap()
+                .status,
+            CheckStatus::Fail,
+            "{check} without workflow coverage"
+        );
+    }
+
+    fs::write(
+        repo.path().join(".github/workflows/lint.yml"),
+        "on: pull_request\njobs:\n  lint:\n    steps:\n      - run: cargo +1.98.0 hawk check -D warnings\n      - run: uvx zizmor@1.14.2 .\n      - uses: ludeeus/action-shellcheck@2.0.0\n",
+    )
+    .unwrap();
+    let inventory = inspect_repository(repo.path(), &InventoryOptions::default()).unwrap();
+    let report =
+        run_repository_checks_with_repo_config(repo.path(), &inventory, &RepoConfig::default());
+    for check in ["hawk", "shellcheck", "zizmor"] {
+        assert_eq!(
+            report
+                .results
+                .iter()
+                .find(|result| result.check == check)
+                .unwrap()
+                .status,
+            CheckStatus::Pass,
+            "{check} with workflow coverage"
+        );
+    }
 }
