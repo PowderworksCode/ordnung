@@ -31,6 +31,7 @@ pub use error::{Error, Result};
 pub use fleet::{
     CONFIG_DIR, ChangeKind, Extends, FLEET_FILE, FleetConfig, ManagedChange, OVERRIDES_FILE,
     POLICY_FILE, PolicyLibrary, ResolvedManaged, apply_changes, plan_managed_changes,
+    plan_managed_changes_for_member,
 };
 pub use github::{
     DependabotAutomergeWorkflowFacts, GithubActionPublicationFacts, GithubActionsPermissionsFacts,

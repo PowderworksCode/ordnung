@@ -4,6 +4,12 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- A fleet member may declare its `website`, and a managed entry with
+  `substitute = true` may write it as `{{website}}`. A repository name is not an
+  address, so the fleet states it rather than deriving it; a file that hands out
+  an install URL has to hand out the one that answers. Substituting into a
+  member that declares no website fails the plan, naming the member.
+
 - Managed entries accept `substitute = true`: the plan writes the member into
   `{{repo}}`, `{{name}}`, and `{{NAME}}` placeholders in the source file, so
   one fleet file can carry repository-specific content such as a release
