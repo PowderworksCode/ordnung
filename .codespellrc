@@ -1,0 +1,7 @@
+# codespell, run by the fleet lint workflow, reads this on its way past.
+#
+# The readme check matches a heading whose first word starts with licens, which
+# covers both license and licensing. Spelled out as license it stops matching
+# licensing — a silent narrowing that was shipped once already.
+[codespell]
+ignore-words-list = licens
