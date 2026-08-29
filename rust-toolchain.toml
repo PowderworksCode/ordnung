@@ -1,7 +1,7 @@
 # The toolchain this repository is built and tested with.
 #
-# 1.97.1 fleet-wide, matching in fact. An earlier 1.96.1 pin existed only because
-# 1.97.1 ICEd on dbsp 0.325; dbsp is gone as of in fact 2f97ada and the ICE with
+# 1.97.1 fleet-wide, matching infact. An earlier 1.96.1 pin existed only because
+# 1.97.1 ICEd on dbsp 0.325; dbsp is gone as of infact 2f97ada and the ICE with
 # it.
 #
 # `components` is listed because clippy and rustfmt are not in the minimal
