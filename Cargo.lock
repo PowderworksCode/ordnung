@@ -200,7 +200,7 @@ checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
 [[package]]
 name = "entl-codebase"
 version = "0.0.0"
-source = "git+https://github.com/PowderworksCode/entl?rev=4066769b9703510a60657ecfec97431434335136#4066769b9703510a60657ecfec97431434335136"
+source = "git+https://github.com/PowderworksCode/entl?rev=6058f9018aeac94e94769df10854a2befe529dee#6058f9018aeac94e94769df10854a2befe529dee"
 dependencies = [
  "globset",
  "ignore",
@@ -215,7 +215,7 @@ dependencies = [
 [[package]]
 name = "entl-github"
 version = "0.0.0"
-source = "git+https://github.com/PowderworksCode/entl?rev=4066769b9703510a60657ecfec97431434335136#4066769b9703510a60657ecfec97431434335136"
+source = "git+https://github.com/PowderworksCode/entl?rev=6058f9018aeac94e94769df10854a2befe529dee#6058f9018aeac94e94769df10854a2befe529dee"
 dependencies = [
  "entl-codebase",
  "inventory",
