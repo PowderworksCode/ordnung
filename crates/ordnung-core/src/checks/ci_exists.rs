@@ -1,12 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use entl_codebase::TaskKind;
+use entl_codebase::{TaskKind, language_conventions};
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
     RepositoryCheckContext, Severity, registry, result,
 };
+use crate::profile::language_profile;
 
 pub(crate) static CHECK: CheckDefinition = CheckDefinition {
     id: "ci-exists",
@@ -63,7 +64,19 @@ fn run(
 
     let mut language_roots = BTreeMap::<String, BTreeSet<PathBuf>>::new();
     for project in &context.inventory.projects {
+        // A project that declares no package.json is not owed JavaScript CI
+        // tasks because a file of that language sits in it: a Rust crate with a
+        // grammar.js or a build script has not taken on a JavaScript toolchain,
+        // and asking it for one is advice nobody should follow.
+        let declares_package =
+            crate::inventory::declares_optionally_typed_package(context.inventory, project);
         for language in &project.languages {
+            let optionally_typed = language_profile(language.as_str())
+                .and_then(language_conventions)
+                .is_some_and(|conventions| conventions.typecheck.is_some());
+            if optionally_typed && !declares_package {
+                continue;
+            }
             language_roots
                 .entry(language.as_str().to_owned())
                 .or_default()
