@@ -13,9 +13,9 @@ Every member now has CI. One `gate` job per repository runs
 -D warnings`, and `cargo test --workspace`, on push, pull request, and a
 weekly schedule. Actions are pinned by commit SHA. The toolchain comes
 from each repository's rust-toolchain.toml — 1.97.1 fleet-wide, matching
-infact — rather than from a setup action.
+in fact — rather than from a setup action.
 
-Straitjacket, infact, and cowbird build Entl from a sibling checkout, so
+Straitjacket, in fact, and cowbird build Entl from a sibling checkout, so
 their workflows check the sibling repositories out alongside. Those
 checkouts are unpinned and track default branches, which is a real
 coupling: an Entl change can break their CI with nothing landing in
@@ -83,7 +83,7 @@ anything. The 11 that remain are three questions:
 - All 7 members are incubating today. Graduating one is a deliberate
   edit to conf/.ordnung/fleet.toml.
 - Stage is fleet-assigned, never self-declared by a member.
-- Visibility, as of 2026-08-05: entl and infact are public; ordnung,
+- Visibility, as of 2026-08-05: entl and in fact are public; ordnung,
   straitjacket, cowbird, website, and conf are private. This line has
   drifted before, so check it rather than trusting it.
   Ordnung going public is a v0.1.0 prerequisite, not a preference: the
@@ -138,7 +138,7 @@ anything. The 11 that remain are three questions:
   5. Dogfood and resolve findings ............. IN PROGRESS
      22 required findings -> 11. Dependabot (6) closed by conf#1.
      TypeScript fixture findings closed by ignoring **/tests/fixtures/**
-     in entl and infact — those fixtures were being read as projects
+     in entl and in fact — those fixtures were being read as projects
      owing CI tasks, a type layer, and a managed Biome config.
      The 11 that remain are listed in section 0.
      Unchanged: test-mirror still dominates the off-severity findings,
@@ -225,4 +225,4 @@ anything. The 11 that remain are three questions:
              ./scripts/local_dev clippy --workspace --all-targets -- -D warnings
              ./scripts/local_dev fmt --check
 - Fleet checks: ./target/debug/ordnung fleet check ../conf/.ordnung/fleet.toml
-- infact and cowbird are now fleet members and have remotes.
+- in fact and cowbird are now fleet members and have remotes.

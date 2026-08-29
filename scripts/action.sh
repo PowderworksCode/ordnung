@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Invoked indirectly, through the EXIT trap below.
+# shellcheck disable=SC2329
 record_outcome() {
   status=$?
   trap - EXIT

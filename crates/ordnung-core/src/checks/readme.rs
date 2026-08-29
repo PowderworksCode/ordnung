@@ -147,7 +147,7 @@ pub(super) fn inspect(text: &str) -> ReadmeFacts {
             .any(|word| contains_word(heading, word))
         }),
         has_license: heading_text.iter().any(|heading| {
-            words(heading).any(|word| word.starts_with("licens") || word.starts_with("licenc"))
+            words(heading).any(|word| word.starts_with("license") || word.starts_with("licenc"))
         }),
         has_contributing: heading_text
             .iter()

@@ -18,7 +18,7 @@ of the field guide.
   keeps those pins current, so do not replace a SHA with a tag to make an update
   easier.
 - The toolchain comes from each repository's `rust-toolchain.toml`, not from a
-  setup action. It is 1.97.1 fleet-wide, matching infact.
+  setup action. It is 1.97.1 fleet-wide, matching in fact.
 - Tool identities and codebase conventions belong in `entl-codebase`; GitHub
   workflow and remote repository facts belong in `entl-github`.
 - Ordnung pins Entl by exact Git revision. For a cross-repository API change,
