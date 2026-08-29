@@ -30,6 +30,7 @@ jobs:
   # endpoint, so `install.sh` can never see a half-uploaded release.
   draft:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     outputs:
@@ -84,6 +85,7 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -113,6 +115,7 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
@@ -157,6 +160,7 @@ jobs:
     # the checkout — see the note on its outputs.
     if: needs.draft.outputs.crate == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # One place to require a human approval before an irreversible publish:
     # Settings > Environments > crates-io > Required reviewers.
     environment: crates-io

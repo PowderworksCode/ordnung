@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install the ordnung binary.
 #
-#   curl -fsSL https://raw.githubusercontent.com/PowderworksCode/ordnung/main/install.sh | sh
+#   curl -fsSL https://ordnung.dev/install | sh
 #
 # Environment:
 #   ORDNUNG_VERSION     version to install, such as v0.1.0. Default: latest
