@@ -1,12 +1,4 @@
----
-title: Ordnung
-description: Repository order, made explicit.
-tab-title: Ordnung by Powderworks
----
-
-<p class="cover"><img src="/house.png" alt="A tidy house, in order" width="220"></p>
-
-**Repository order, made explicit.**
+<p class="cover"><img src="/cover.png" alt="A tidy house, in order" width="220"></p>
 
 Ordnung determines whether a GitHub repository is structurally in order. It
 inventories a repository once, resolves the policy that applies, and reports
