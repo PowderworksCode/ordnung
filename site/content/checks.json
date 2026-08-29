@@ -117,6 +117,16 @@
         ]
       },
       {
+        "id": "ci-matrix-scoped",
+        "summary": "Let every pull-request matrix job short-circuit: scope the workflow with path filters, condition the job, or expand the matrix from a fanout job that inspects the change.",
+        "category": "CI safety",
+        "scope": "repository",
+        "default_severity": "recommended",
+        "surfaces": [
+          "repository"
+        ]
+      },
+      {
         "id": "ci-scheduled-run",
         "summary": "Run validation on a schedule when periodic coverage should expose repository bitrot between changes.",
         "category": "CI safety",
