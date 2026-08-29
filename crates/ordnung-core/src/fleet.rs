@@ -631,6 +631,11 @@ pub struct FleetMember {
     pub note: String,
     #[serde(default)]
     pub stage: Stage,
+    /// Where this project answers on the web. Declared by the fleet rather than
+    /// derived from the repository name, because the two need not agree and a
+    /// managed file that hands out an install URL has to hand out the real one.
+    #[serde(default)]
+    pub website: Option<String>,
 }
 
 /// How much a repository owes the people who use it.
@@ -824,6 +829,19 @@ pub fn plan_managed_changes(
     inventory: &Inventory,
     entries: &[ResolvedManaged],
 ) -> Result<Vec<ManagedChange>> {
+    plan_managed_changes_for_member(member_repo, None, member_root, inventory, entries)
+}
+
+/// Plans with the member's fleet declaration available, so a managed file can
+/// substitute facts the fleet knows and the repository does not — its website,
+/// today.
+pub fn plan_managed_changes_for_member(
+    member_repo: &str,
+    website: Option<&str>,
+    member_root: &Path,
+    inventory: &Inventory,
+    entries: &[ResolvedManaged],
+) -> Result<Vec<ManagedChange>> {
     validate_repo_name(member_repo)?;
     let member_root = member_root
         .canonicalize()
@@ -876,7 +894,7 @@ pub fn plan_managed_changes(
                     } else {
                         let substitution = entry
                             .substitute
-                            .then(|| Substitution::for_member(&entry.name, member_repo))
+                            .then(|| Substitution::for_member(&entry.name, member_repo, website))
                             .transpose()?;
                         plan_file(
                             &entry.name,
@@ -962,10 +980,11 @@ struct Substitution {
     repo: String,
     name: String,
     upper: String,
+    website: Option<String>,
 }
 
 impl Substitution {
-    fn for_member(entry: &str, member_repo: &str) -> Result<Self> {
+    fn for_member(entry: &str, member_repo: &str, website: Option<&str>) -> Result<Self> {
         let name = member_repo.split('/').next_back().ok_or_else(|| {
             Error::Config(format!(
                 "managed entry {entry:?} cannot substitute into malformed repository {member_repo:?}"
@@ -975,6 +994,10 @@ impl Substitution {
             repo: member_repo.to_owned(),
             name: name.to_owned(),
             upper: name.to_ascii_uppercase().replace('-', "_"),
+            website: website
+                .map(str::trim)
+                .filter(|site| !site.is_empty())
+                .map(ToOwned::to_owned),
         })
     }
 
@@ -988,10 +1011,24 @@ impl Substitution {
                 source.display()
             ))
         })?;
-        let text = text
+        let mut text = text
             .replace("{{repo}}", &self.repo)
             .replace("{{name}}", &self.name)
             .replace("{{NAME}}", &self.upper);
+        // A member that declares no website cannot receive a file that hands one
+        // out. Failing the plan says which member and which file; substituting a
+        // guess would publish an address nobody answers at.
+        if text.contains("{{website}}") {
+            let Some(website) = &self.website else {
+                return Err(Error::Config(format!(
+                    "managed entry {entry:?} substitutes {{{{website}}}} into {}, \
+                     but member {} declares no website",
+                    source.display(),
+                    self.repo
+                )));
+            };
+            text = text.replace("{{website}}", website);
+        }
         for (at, _) in text.match_indices("{{") {
             if text.as_bytes()[..at].last() == Some(&b'$') {
                 continue;

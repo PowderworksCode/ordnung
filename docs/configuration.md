@@ -80,9 +80,20 @@ substitute = true
 only = ["PowderworksCode/straitjacket"]
 ```
 
-Three placeholders exist: `{{repo}}` (owner/name), `{{name}}` (the repository
-name), and `{{NAME}}` (the name uppercased with `-` as `_`, for environment
-variables). GitHub expressions (`${{ ... }}`) pass through untouched; any
+Four placeholders exist: `{{repo}}` (owner/name), `{{name}}` (the repository
+name), `{{NAME}}` (the name uppercased with `-` as `_`, for environment
+variables), and `{{website}}` — the member's own site, declared by the fleet:
+
+```toml
+[[member]]
+repo = "PowderworksCode/straitjacket"
+website = "https://straitjacket.dev"
+```
+
+A repository name is not an address, so `{{website}}` comes from the fleet
+rather than being derived. A file that substitutes it into a member with no
+declared website fails the plan, naming the member: an install URL nobody
+answers at is worse than no install URL. GitHub expressions (`${{ ... }}`) pass through untouched; any
 other bare `{{` fails the plan, so a misspelled placeholder cannot ship
 literally to every member. Substitution requires a UTF-8 file source, not a
 directory.

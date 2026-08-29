@@ -18,8 +18,8 @@ use ordnung_core::{
     DependencyRequirement, FileChangeSource, FleetConfig, GithubRepositoryFacts,
     GithubSettingChange, InventoryOptions, RemediationPlan, RepoConfig, Report,
     build_remediation_plan, default_policy, inspect_repository, plan_github_settings,
-    plan_managed_changes, resolve_github_settings, resolve_policy, run_github_checks_with_settings,
-    run_repository_checks_with_requirements,
+    plan_managed_changes_for_member, resolve_github_settings, resolve_policy,
+    run_github_checks_with_settings, run_repository_checks_with_requirements,
 };
 use serde::Serialize;
 
@@ -199,8 +199,13 @@ pub fn sync_fleet_member<R: GhRunner>(
     let mut github_report = run_github_checks_with_settings(&facts, &settings);
     github_report.apply_policy(&policy);
 
-    let managed_changes =
-        plan_managed_changes(repository, &checkout, &inventory, fleet.effective_managed())?;
+    let managed_changes = plan_managed_changes_for_member(
+        repository,
+        fleet.member(repository).and_then(|m| m.website.as_deref()),
+        &checkout,
+        &inventory,
+        fleet.effective_managed(),
+    )?;
     let setting_changes = plan_github_settings(&facts, &settings);
     let plan = build_remediation_plan(
         facts.repository.clone(),
@@ -285,8 +290,13 @@ pub fn plan_local_sync(
             ignore: local.ignore.clone(),
         },
     )?;
-    let managed_changes =
-        plan_managed_changes(repository, repo_root, &inventory, fleet.effective_managed())?;
+    let managed_changes = plan_managed_changes_for_member(
+        repository,
+        fleet.member(repository).and_then(|m| m.website.as_deref()),
+        repo_root,
+        &inventory,
+        fleet.effective_managed(),
+    )?;
     let mut report = run_repository_checks_with_requirements(
         repo_root,
         &inventory,

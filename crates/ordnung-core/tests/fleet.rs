@@ -5,7 +5,7 @@ use ordnung_core::check::Severity;
 use ordnung_core::fleet::{ManagedEntry, ManagedState, ProjectSelector, RelativeTo, Stage};
 use ordnung_core::{
     ChangeKind, FleetConfig, InventoryOptions, LanguageId, ResolvedManaged, apply_changes,
-    inspect_repository, plan_managed_changes,
+    inspect_repository, plan_managed_changes, plan_managed_changes_for_member,
 };
 
 fn entry(source: &str, destination: &str) -> ManagedEntry {
@@ -650,4 +650,45 @@ fn substituting_directory_source_is_rejected() {
     )
     .unwrap_err();
     assert!(error.to_string().contains("file source"), "{error}");
+}
+
+/// A member's website is the fleet's fact, not the repository's: the two need
+/// not agree, and a file that hands out an install URL has to hand out one that
+/// answers. A member without a declared website is told so, by name.
+#[test]
+fn substituting_entry_takes_the_website_from_the_fleet() {
+    let fleet = tempfile::tempdir().unwrap();
+    let member = tempfile::tempdir().unwrap();
+    fs::create_dir_all(fleet.path().join("managed")).unwrap();
+    fs::write(
+        fleet.path().join("managed/install.sh"),
+        "# curl -fsSL {{website}}/install | sh\n",
+    )
+    .unwrap();
+    let inventory = inspect_repository(member.path(), &InventoryOptions::default()).unwrap();
+    let mut substituting = entry("managed/install.sh", "install.sh");
+    substituting.substitute = true;
+
+    let changes = plan_managed_changes_for_member(
+        "PowderworksCode/straitjacket",
+        Some("https://straitjacket.dev"),
+        member.path(),
+        &inventory,
+        &resolved(fleet.path(), vec![substituting.clone()]),
+    )
+    .unwrap();
+    assert_eq!(
+        String::from_utf8(changes[0].content().unwrap().to_vec()).unwrap(),
+        "# curl -fsSL https://straitjacket.dev/install | sh\n"
+    );
+
+    let error = plan_managed_changes_for_member(
+        "PowderworksCode/straitjacket",
+        None,
+        member.path(),
+        &inventory,
+        &resolved(fleet.path(), vec![substituting]),
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("declares no website"), "{error}");
 }
