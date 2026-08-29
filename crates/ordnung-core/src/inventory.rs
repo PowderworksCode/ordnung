@@ -322,6 +322,30 @@ fn is_hidden_path(path: &Path) -> bool {
     })
 }
 
+/// Whether the project declares a package whose ecosystem implies an optionally
+/// typed language — a `package.json`, in practice.
+///
+/// This separates a JavaScript or TypeScript project from a directory that
+/// merely contains one of their files. A tree-sitter grammar crate carries a
+/// `grammar.js`, a Rust crate can carry a build script, a demo directory can
+/// carry a snippet, and none of them is a project owing a tsconfig or a lint
+/// task. The package's own language is deliberately not compared: a manifest
+/// that says `javascript` routinely governs a directory of TypeScript.
+pub fn declares_optionally_typed_package(inventory: &Inventory, project: &Project) -> bool {
+    inventory
+        .packages
+        .iter()
+        .filter(|package| package.root == project.root)
+        .any(|package| {
+            package
+                .ecosystem_profile()
+                .implied_languages
+                .iter()
+                .filter_map(|implied| language_conventions(implied))
+                .any(|conventions| conventions.typecheck.is_some())
+        })
+}
+
 fn effective_languages(languages: BTreeSet<LanguageId>) -> BTreeSet<LanguageId> {
     languages
         .iter()

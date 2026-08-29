@@ -2387,3 +2387,52 @@ fn typecheck_asks_only_where_a_package_declares_itself() {
     );
     assert_eq!(typecheck[0].scope, std::path::Path::new("site"));
 }
+
+/// The same rule the type layer follows: a language a project never declared
+/// is not a language it owes CI tasks for. The grammar crate's grammar.js does
+/// not put a JavaScript toolchain on the repository's bill.
+#[test]
+fn ci_exists_grades_only_languages_a_package_declares() {
+    let repo = tempfile::tempdir().unwrap();
+    fs::create_dir_all(repo.path().join("crates/grammar/src")).unwrap();
+    fs::create_dir_all(repo.path().join(".github/workflows")).unwrap();
+    fs::write(
+        repo.path().join("Cargo.toml"),
+        "[workspace]\nmembers = [\"crates/grammar\"]\nresolver = \"2\"\n",
+    )
+    .unwrap();
+    fs::write(
+        repo.path().join("crates/grammar/Cargo.toml"),
+        "[package]\nname = \"grammar\"\nversion = \"0.0.0\"\nedition = \"2021\"\n",
+    )
+    .unwrap();
+    fs::write(
+        repo.path().join("crates/grammar/src/lib.rs"),
+        "pub fn g() {}\n",
+    )
+    .unwrap();
+    fs::write(
+        repo.path().join("crates/grammar/grammar.js"),
+        "module.exports = grammar({ name: 'g', rules: {} });\n",
+    )
+    .unwrap();
+    fs::write(
+        repo.path().join(".github/workflows/ci.yml"),
+        "on: pull_request\njobs:\n  rust:\n    timeout-minutes: 20\n    steps:\n      - run: cargo test\n      - run: cargo clippy\n      - run: cargo fmt --check\n",
+    )
+    .unwrap();
+
+    let inventory = inspect_repository(repo.path(), &InventoryOptions::default()).unwrap();
+    let report =
+        run_repository_checks_with_repo_config(repo.path(), &inventory, &RepoConfig::default());
+    let failures = report
+        .results
+        .iter()
+        .filter(|result| result.check == "ci-exists" && result.status == CheckStatus::Fail)
+        .map(|result| result.message.clone())
+        .collect::<Vec<_>>();
+    assert!(
+        failures.is_empty(),
+        "the Rust workspace satisfies its own tasks and owes no JavaScript ones: {failures:?}"
+    );
+}
