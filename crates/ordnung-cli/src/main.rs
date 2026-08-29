@@ -11,6 +11,7 @@ use ordnung_core::{
     Report, apply_file_changes, build_remediation_plan, default_policy, inspect_repository,
     plan_github_settings, resolve_github_settings, resolve_policy, run_github_checks_with_settings,
     run_repository_checks_for_state, run_repository_checks_with_repo_config,
+    run_repository_checks_with_requirements,
 };
 use serde::Serialize;
 
@@ -22,8 +23,8 @@ use ordnung_cli::render::{
     severity_name, status_name, summarize, unreached_github_checks,
 };
 use ordnung_cli::sync::{
-    GithubSyncOutcome, check_fleet_members, ensure_explicit_member, plan_fleet_member_settings,
-    plan_local_sync, sync_fleet_member, sync_fleet_members,
+    GithubSyncOutcome, check_fleet_members, ensure_explicit_member, fleet_requirements,
+    plan_fleet_member_settings, plan_local_sync, sync_fleet_member, sync_fleet_members,
 };
 
 #[derive(Debug, Parser)]
@@ -116,6 +117,12 @@ struct CheckArgs {
     path: PathBuf,
     #[arg(long)]
     json: bool,
+    /// Fleet manifest supplying centralized policy for this repository.
+    #[arg(long, requires = "repo")]
+    fleet: Option<PathBuf>,
+    /// Fleet repository name in owner/name form.
+    #[arg(long, requires = "fleet")]
+    repo: Option<String>,
     #[command(flatten)]
     filter: ReportFilter,
 }
@@ -474,14 +481,38 @@ fn required_failure_count(report: &Report) -> usize {
 
 fn check(args: CheckArgs) -> Result<ExitCode> {
     let config = RepoConfig::load_optional(&args.path)?;
-    let policy = resolve_policy(&default_policy(), None, &config)?;
+    let fleet = args.fleet.as_deref().map(FleetConfig::load).transpose()?;
+    if let (Some(fleet), Some(repo)) = (&fleet, &args.repo) {
+        if !fleet.members.iter().any(|member| member.repo == *repo) {
+            bail!(
+                "repository {repo:?} is not an explicit member of fleet {:?}",
+                fleet.name
+            );
+        }
+    }
+    // Under a fleet, checks run at the member's resolved severities, member
+    // [overrides] are validated against allow_override, and fleet dependency
+    // requirements apply — the local half of what `fleet github-sync` audits.
+    let member_checks = match (&fleet, &args.repo) {
+        (Some(fleet), Some(repo)) => Some(fleet.checks_for(repo)),
+        _ => None,
+    };
+    let policy = resolve_policy(&default_policy(), member_checks.as_ref(), &config)?;
     let inventory = inspect_repository(
         &args.path,
         &InventoryOptions {
             ignore: config.ignore.clone(),
         },
     )?;
-    let mut report = run_repository_checks_with_repo_config(&args.path, &inventory, &config);
+    let mut report = match &fleet {
+        Some(fleet) => run_repository_checks_with_requirements(
+            &args.path,
+            &inventory,
+            &config,
+            &fleet_requirements(&config, fleet),
+        ),
+        None => run_repository_checks_with_repo_config(&args.path, &inventory, &config),
+    };
     report.apply_policy(&policy);
 
     let clean = report.is_clean();
