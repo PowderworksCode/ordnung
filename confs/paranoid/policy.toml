@@ -38,3 +38,29 @@ action-badge = { severity = "required", allow_override = true }
 # test scaffolding and a test file is findable from its source path.
 test-inline = { severity = "required", allow_override = true }
 test-mirror = { severity = "required", allow_override = true }
+
+# ---------------------------------------------------------------------------
+# Content
+#
+# The configuration for the linters this tier mandates, plus a replacement for
+# the lint workflow `recommended` ships. Overriding by name is how a layer
+# revises inherited content: this entry and that one share the name
+# `fleet-lint-workflow`, and the later layer's source wins.
+
+[[managed]]
+name = "fleet-lint-workflow"
+source = "managed/github/lint.yml"
+destination = ".github/workflows/fleet-lint.yml"
+relative_to = "repo"
+
+[[managed]]
+name = "vale-config"
+source = "managed/vale/vale.ini"
+destination = ".vale.ini"
+relative_to = "repo"
+
+[[managed]]
+name = "stylelint-config"
+source = "managed/stylelint/stylelintrc.json"
+destination = ".stylelintrc.json"
+relative_to = "repo"

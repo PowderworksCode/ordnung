@@ -4,6 +4,19 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- The shipped policy tiers distribute content, not only severities. Turning a
+  check on and leaving every adopter to invent the file that satisfies it is
+  half a job, so `recommended` ships the Git hooks, the Dependabot
+  configuration, the TypeScript bases, and a codespell workflow, and `paranoid`
+  adds the Vale and Stylelint configuration and replaces that workflow with one
+  running every linter it mandates. Extending a tier distributes them.
+
+- A layer may refine an inherited managed entry instead of replacing it, by
+  reusing its `name` with no `source` and supplying only `only` or `when`. The
+  content, its layer, and its destination are inherited. Narrowing which members
+  receive a file previously meant copying the file down a layer to say so, which
+  left two copies to keep in step.
+
 - A project selector may name several `ecosystems`, matching a project that
   uses any one of them. `language` cannot express "a package of this family":
   a tree-sitter grammar for TypeScript is written in TypeScript and is not a

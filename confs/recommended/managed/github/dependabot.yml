@@ -1,0 +1,75 @@
+version: 2
+
+# Fleet-owned. Edit this in the policy tier, not in the member repository: a local change is
+# drift, and the next sync overwrites it.
+#
+# One file for every member. The directories inside it are globs rather than a
+# list of each repository's actual layout, so this file states fleet POLICY —
+# weekly, minor and patch grouped into one pull request, five open at most — and
+# lets the globs discover the topology. A glob matching nothing is not an error,
+# so the same bytes are correct in a Cargo workspace, a Bun site, and a fleet definition,
+# which has neither.
+#
+# The alternative was a file per repository shape. That put facts about each
+# repository's layout into the fleet, where they would go stale silently the
+# first time somebody added a crate.
+
+updates:
+  # The Action pins in .github/workflows are 40-character commit SHAs, because
+  # `pinned-actions` treats a mutable tag as a supply-chain hole. A pin nobody
+  # updates is its own hole, and this is what updates them.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Workspace members share the root lockfile, so `/` covers all of them. A
+  # crate under tools/, or one the workspace excludes, carries its own
+  # Cargo.lock and is graded separately — hence the globs.
+  - package-ecosystem: cargo
+    directories:
+      - /
+      - /tools/*
+      - /crates/*
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Grouped so a quiet week is one pull request rather than nine. Major
+    # versions stay separate: those are the ones worth reading.
+    groups:
+      cargo-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Bun is its own Dependabot ecosystem. `/**` is the whole tree rather than
+  # `/*`, which reached exactly one level down: it missed members whose bun
+  # project is the repository root (docs, immersion) and any nested one.
+  - package-ecosystem: bun
+    directories:
+      - /**
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      site-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # npm, for the directories that carry a package-lock.json rather than a
+  # bun.lock — treebank's language oracles are the ones in this fleet today.
+  # Dependabot decides per directory from the lockfile it finds, so this and
+  # the bun entry above do not fight over the same package.json.
+  - package-ecosystem: npm
+    directories:
+      - /**
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

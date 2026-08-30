@@ -1,2 +1,7 @@
+# `confs/` is not Ordnung's source. It is the policy tiers: severity tables and
+# the files distributed to member repositories, both of which are deliberately
+# comment-heavy because their comments are the documentation a member reads at
+# the destination. Straitjacket grades the code that implements Ordnung.
+paths = ["crates", "site", "scripts", "docs"]
 no-comments = true
 file-size-exclude = ["notes/"]
