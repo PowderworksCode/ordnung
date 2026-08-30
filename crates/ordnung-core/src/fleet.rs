@@ -744,14 +744,38 @@ pub struct ProjectSelector {
     pub language: Option<LanguageId>,
     pub capability: Option<ProjectCapability>,
     pub ecosystem: Option<EcosystemId>,
+    /// Any one of several ecosystems, for a selector that means "a package of
+    /// this family" — `npm` or `bun`, say. A language cannot express that: a
+    /// tree-sitter grammar for TypeScript is written in TypeScript and is not
+    /// a TypeScript package, so selecting on the language distributes a
+    /// tsconfig into a directory with no package.json in it.
+    #[serde(default)]
+    pub ecosystems: Vec<EcosystemId>,
 }
 
 impl ProjectSelector {
     fn validate(&self) -> Result<()> {
-        if self.language.is_none() && self.capability.is_none() && self.ecosystem.is_none() {
+        if self.language.is_none()
+            && self.capability.is_none()
+            && self.ecosystem.is_none()
+            && self.ecosystems.is_empty()
+        {
             return Err(Error::Config(
-                "project selector must declare language, capability, or ecosystem".into(),
+                "project selector must declare language, capability, ecosystem, or ecosystems"
+                    .into(),
             ));
+        }
+        if self.ecosystem.is_some() && !self.ecosystems.is_empty() {
+            return Err(Error::Config(
+                "project selector declares both ecosystem and ecosystems; use one".into(),
+            ));
+        }
+        for ecosystem in &self.ecosystems {
+            if ecosystem_profile(ecosystem.as_str()).is_none() {
+                return Err(Error::Config(format!(
+                    "unknown ecosystem profile {ecosystem:?} in project selector"
+                )));
+            }
         }
         if let Some(language) = &self.language {
             if language_profile(language.as_str()).is_none() {
@@ -781,6 +805,13 @@ impl ProjectSelector {
                 .ecosystem
                 .as_ref()
                 .is_none_or(|ecosystem| project.uses_ecosystem(ecosystem.as_str()))
+            // Several ecosystems read as "any of these", where the fields
+            // above read as "and": a package is npm's or bun's, never both.
+            && (self.ecosystems.is_empty()
+                || self
+                    .ecosystems
+                    .iter()
+                    .any(|ecosystem| project.uses_ecosystem(ecosystem.as_str())))
     }
 }
 
@@ -795,6 +826,14 @@ impl std::fmt::Display for ProjectSelector {
         }
         if let Some(ecosystem) = &self.ecosystem {
             fields.push(format!("ecosystem={ecosystem}"));
+        }
+        if !self.ecosystems.is_empty() {
+            let names = self
+                .ecosystems
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>();
+            fields.push(format!("ecosystems={}", names.join("|")));
         }
         fields.join(", ").fmt(formatter)
     }

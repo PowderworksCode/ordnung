@@ -98,6 +98,29 @@ other bare `{{` fails the plan, so a misspelled placeholder cannot ship
 literally to every member. Substitution requires a UTF-8 file source, not a
 directory.
 
+## Selecting projects
+
+A `relative_to = "project"` entry selects with `when`, which accepts `language`,
+`capability`, `ecosystem`, or `ecosystems` — the last naming several, where any
+one of them matches:
+
+```toml
+[[managed]]
+name = "typescript-tsconfig-base"
+source = "managed/typescript/tsconfig.base.json"
+destination = "tsconfig.base.json"
+relative_to = "project"
+when = { ecosystems = ["npm", "bun"] }
+```
+
+The other fields combine with `and`; `ecosystems` is the one that reads as
+`or`, because a package belongs to one package manager rather than several.
+
+Prefer it to `language` when the file belongs to a package. A tree-sitter
+grammar for TypeScript is written in TypeScript and is not a TypeScript
+package: selecting on the language puts a tsconfig in a Cargo crate that has no
+`package.json` anywhere in it.
+
 ## Other configuration keys
 
 `.ordnung/overrides.toml` also accepts keys consumed directly by checks:
