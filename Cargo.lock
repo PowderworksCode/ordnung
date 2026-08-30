@@ -206,6 +206,8 @@ checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
 [[package]]
 name = "entl"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "424976c090cf1e6e04e6450044c43831d0dd9bc7e2fc576e8d8feddb0f8cd1f6"
 dependencies = [
  "globset",
  "ignore",
