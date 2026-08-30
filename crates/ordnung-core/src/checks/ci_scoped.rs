@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use entl_codebase::{CiWorkload, tool_profile};
+use entl::codebase::{CiWorkload, tool_profile};
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

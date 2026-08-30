@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use entl_codebase::{TaskKind, language_conventions};
+use entl::codebase::{TaskKind, language_conventions};
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
@@ -51,7 +51,7 @@ fn run(
         .github
         .workflows
         .iter()
-        .any(entl_github::Workflow::runs_on_changes)
+        .any(entl::github::Workflow::runs_on_changes)
     {
         results.push(result(
             definition,

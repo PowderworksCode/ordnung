@@ -8,16 +8,21 @@ In this tutorial, we will install Ordnung, point it at a small Rust repository, 
 its findings — one applied by Ordnung, one by hand. By the end, you will have seen the whole loop
 at the heart of Ordnung: what exists, what policy wants, and what changing something looks like.
 
-You will need Git and a current Rust toolchain — for the example repository as much as for the
-installation.
+You will need Git, and a current Rust toolchain for the example repository we create below. The
+installer itself needs neither.
 
 ## Install Ordnung
 
-Install the command-line application straight from the repository:
+Grab the prebuilt binary (Linux x86_64/aarch64, macOS arm64/x86_64):
 
 ```sh
-cargo install --git https://github.com/PowderworksCode/ordnung ordnung-cli --locked
+curl -fsSL https://ordnung.dev/install | sh
 ```
+
+It verifies the download against the release checksums and installs to
+`~/.local/bin`. Running that same command again later is how you update.
+Prefer to build from source? `cargo install ordnung-cli` — the crate is
+`ordnung-cli`, the binary it installs is `ordnung`.
 
 Check that the command is available:
 
@@ -25,8 +30,8 @@ Check that the command is available:
 ordnung --version
 ```
 
-You should see an Ordnung version number. If your shell cannot find `ordnung`, make sure Cargo's
-binary directory is on your `PATH`.
+You should see an Ordnung version number. If your shell cannot find `ordnung`, add the directory
+it was installed to — `~/.local/bin`, or Cargo's `bin` if you built from source — to your `PATH`.
 
 ## Create a repository to inspect
 

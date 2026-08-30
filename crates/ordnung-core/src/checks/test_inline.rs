@@ -1,6 +1,6 @@
 use std::fs;
 
-use entl_codebase::language_conventions;
+use entl::codebase::language_conventions;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

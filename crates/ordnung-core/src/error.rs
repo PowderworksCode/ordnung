@@ -12,7 +12,7 @@ pub enum Error {
         path: PathBuf,
         message: String,
     },
-    Codebase(entl_codebase::Error),
+    Codebase(entl::codebase::Error),
 }
 
 impl Error {
@@ -47,8 +47,8 @@ impl std::error::Error for Error {
     }
 }
 
-impl From<entl_codebase::Error> for Error {
-    fn from(error: entl_codebase::Error) -> Self {
+impl From<entl::codebase::Error> for Error {
+    fn from(error: entl::codebase::Error) -> Self {
         Self::Codebase(error)
     }
 }

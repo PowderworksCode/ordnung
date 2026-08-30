@@ -1,6 +1,6 @@
 use std::path::{Component, Path, PathBuf};
 
-use entl_codebase::VALE;
+use entl::codebase::VALE;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

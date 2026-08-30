@@ -2,10 +2,10 @@ use std::collections::BTreeSet;
 use std::path::Component;
 use std::path::{Path, PathBuf};
 
-use entl_codebase::{
+use entl::codebase::{
     PackageKind, PackageScript, SHELL_LANGUAGE, TaskKind, WorkspaceKind, language_conventions,
 };
-use entl_github::GithubInventory;
+use entl::github::GithubInventory;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
@@ -49,7 +49,7 @@ pub struct PackageInstance {
     #[serde(default)]
     pub scripts: Vec<PackageScript>,
     #[serde(default)]
-    pub dependencies: Vec<entl_codebase::Dependency>,
+    pub dependencies: Vec<entl::codebase::Dependency>,
     pub evidence: BTreeSet<PathBuf>,
 }
 
@@ -126,7 +126,7 @@ pub struct Inventory {
     pub shell_scripts: BTreeSet<PathBuf>,
     pub projects: Vec<Project>,
     #[serde(default)]
-    pub artifacts: Vec<entl_codebase::Artifact>,
+    pub artifacts: Vec<entl::codebase::Artifact>,
     #[serde(default)]
     pub packages: Vec<PackageInstance>,
     #[serde(default)]
@@ -147,15 +147,15 @@ impl Inventory {
 }
 
 pub fn inspect_repository(root: &Path, options: &InventoryOptions) -> Result<Inventory> {
-    let codebase = entl_codebase::inspect(
+    let codebase = entl::codebase::inspect(
         root,
-        &entl_codebase::InventoryOptions {
+        &entl::codebase::InventoryOptions {
             include_hidden: true,
             additional_ignores: options.ignore.clone(),
-            ..entl_codebase::InventoryOptions::default()
+            ..entl::codebase::InventoryOptions::default()
         },
     )?;
-    let github = entl_github::inspect(&codebase);
+    let github = entl::github::inspect(&codebase);
     let files = codebase
         .files
         .iter()
@@ -282,8 +282,8 @@ pub fn inspect_repository(root: &Path, options: &InventoryOptions) -> Result<Inv
 }
 
 fn package_instance(
-    package: &entl_codebase::Package,
-    codebase: &entl_codebase::CodebaseInventory,
+    package: &entl::codebase::Package,
+    codebase: &entl::codebase::CodebaseInventory,
 ) -> Option<PackageInstance> {
     let ecosystem = package.ecosystem.clone()?;
     let profile = ecosystem_profile(ecosystem.as_str())?;

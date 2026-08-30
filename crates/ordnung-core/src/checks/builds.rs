@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use entl_codebase::TaskKind;
-use entl_github::TaskInvocation;
+use entl::codebase::TaskKind;
+use entl::github::TaskInvocation;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use entl_codebase::{language_conventions, language_profiles};
+use entl::codebase::{language_conventions, language_profiles};
 
 use crate::check::Severity;
 use crate::error::{Error, Result};
@@ -207,7 +207,7 @@ impl CodegenConfig {
                 || tokens
                     .iter()
                     .any(|token| matches!(token.as_str(), "&&" | "||" | ";" | "|"))
-                || entl_codebase::normalize_invocation(&tokens).is_none()
+                || entl::codebase::normalize_invocation(&tokens).is_none()
             {
                 return Err(Error::Config(format!(
                     "codegen command for {:?} must be one executable invocation",
@@ -237,7 +237,7 @@ impl CodegenConfig {
     pub fn normalized_command(&self) -> (String, Vec<String>) {
         let tokens = shell_words::split(&self.command)
             .expect("validated codegen commands remain valid shell words");
-        entl_codebase::normalize_invocation(&tokens)
+        entl::codebase::normalize_invocation(&tokens)
             .expect("validated codegen commands contain an invocation")
     }
 
@@ -328,7 +328,7 @@ pub struct DependencyRequirement {
     /// Restricts which dependency kind satisfies the requirement. Any kind
     /// satisfies it by default.
     #[serde(default)]
-    pub kind: Option<entl_codebase::DependencyKind>,
+    pub kind: Option<entl::codebase::DependencyKind>,
     #[serde(default)]
     pub state: crate::fleet::ManagedState,
 }

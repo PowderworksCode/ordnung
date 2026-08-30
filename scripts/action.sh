@@ -44,10 +44,15 @@ esac
 
 # The platform triple a release asset is named for. An unrecognised platform is
 # not an error: it falls back to building from source.
+#
+# Linux is musl because that is what the release workflow builds, and these
+# names have to match its archives exactly. Asking for `gnu` here does not fail
+# loudly -- it finds no asset and quietly builds from source on every run, which
+# costs minutes a job and looks like the download simply being slow.
 detect_target() {
   case "$(uname -s):$(uname -m)" in
-    Linux:x86_64) printf 'x86_64-unknown-linux-gnu' ;;
-    Linux:aarch64 | Linux:arm64) printf 'aarch64-unknown-linux-gnu' ;;
+    Linux:x86_64) printf 'x86_64-unknown-linux-musl' ;;
+    Linux:aarch64 | Linux:arm64) printf 'aarch64-unknown-linux-musl' ;;
     Darwin:x86_64) printf 'x86_64-apple-darwin' ;;
     Darwin:arm64) printf 'aarch64-apple-darwin' ;;
     *) return 1 ;;

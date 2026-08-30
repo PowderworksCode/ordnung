@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use entl_codebase::ZIZMOR;
+use entl::codebase::ZIZMOR;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

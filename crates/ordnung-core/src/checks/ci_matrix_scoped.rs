@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use entl_github::WorkflowJob;
+use entl::github::WorkflowJob;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

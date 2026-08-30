@@ -22,11 +22,11 @@ pub use config::{
     LanguageTestLayout, LocalOverride, RepoConfig, ScriptsConfig, StrayFilesConfig,
     TestLayoutConfig, resolve_github_settings, resolve_policy,
 };
-pub use entl_codebase::{
+pub use entl::codebase::{
     Artifact, ArtifactId, ArtifactProfile, LanguageConventions, TaskKind, TestLayoutDefaults,
     ToolId, TypecheckConvention, artifact_profile, artifact_profiles, language_conventions,
 };
-pub use entl_github::{GithubInventory, TaskInvocation, Workflow, WorkflowCommand};
+pub use entl::github::{GithubInventory, TaskInvocation, Workflow, WorkflowCommand};
 pub use error::{Error, Result};
 pub use fleet::{
     CONFIG_DIR, ChangeKind, Extends, FLEET_FILE, FleetConfig, ManagedChange, OVERRIDES_FILE,
