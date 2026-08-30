@@ -4,6 +4,12 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- A project selector may name several `ecosystems`, matching a project that
+  uses any one of them. `language` cannot express "a package of this family":
+  a tree-sitter grammar for TypeScript is written in TypeScript and is not a
+  TypeScript package, so selecting on the language distributed a tsconfig into
+  Cargo crates with no `package.json` in them.
+
 - Managed files keep their executable bit. A distributed Git hook that arrived
   without it was a file Git silently declined to run, which looks exactly like
   a repository whose hooks all pass. The mode is part of what "already

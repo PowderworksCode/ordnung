@@ -4,8 +4,8 @@ use std::path::Path;
 use ordnung_core::check::Severity;
 use ordnung_core::fleet::{ManagedEntry, ManagedState, ProjectSelector, RelativeTo, Stage};
 use ordnung_core::{
-    ChangeKind, FleetConfig, InventoryOptions, LanguageId, ResolvedManaged, apply_changes,
-    inspect_repository, plan_managed_changes, plan_managed_changes_for_member,
+    ChangeKind, EcosystemId, FleetConfig, InventoryOptions, LanguageId, ResolvedManaged,
+    apply_changes, inspect_repository, plan_managed_changes, plan_managed_changes_for_member,
 };
 
 fn entry(source: &str, destination: &str) -> ManagedEntry {
@@ -89,6 +89,7 @@ fn project_relative_file_applies_to_detected_typescript_projects() {
         language: Some(LanguageId::from("typescript")),
         capability: None,
         ecosystem: None,
+        ecosystems: Vec::new(),
     });
 
     let changes = plan_managed_changes(
@@ -735,4 +736,79 @@ fn managed_files_keep_the_executable_bit() {
     )
     .unwrap();
     assert!(clean.is_empty(), "{clean:?}");
+}
+
+/// A selector naming several ecosystems means any of them. A language cannot
+/// say this: a tree-sitter grammar for TypeScript is written in TypeScript and
+/// is not a TypeScript package, so selecting on the language drops a tsconfig
+/// into a Cargo crate that has no package.json in it.
+#[test]
+fn a_selector_may_name_several_ecosystems() {
+    let fleet = tempfile::tempdir().unwrap();
+    let member = tempfile::tempdir().unwrap();
+    fs::create_dir_all(fleet.path().join("managed")).unwrap();
+    fs::write(fleet.path().join("managed/tsconfig.base.json"), "{}\n").unwrap();
+
+    // A Bun site, an npm tool, and a Cargo crate carrying TypeScript fixtures.
+    for (dir, files) in [
+        (
+            "site",
+            vec![
+                ("package.json", "{}"),
+                ("bun.lock", ""),
+                ("worker.ts", "export {};"),
+            ],
+        ),
+        (
+            "tool",
+            vec![
+                ("package.json", "{}"),
+                ("package-lock.json", "{}"),
+                ("main.ts", "export {};"),
+            ],
+        ),
+        (
+            "grammar",
+            vec![(
+                "Cargo.toml",
+                "[package]\nname = \"g\"\nversion = \"0.0.0\"\nedition = \"2021\"\n",
+            )],
+        ),
+    ] {
+        fs::create_dir_all(member.path().join(dir)).unwrap();
+        for (name, body) in files {
+            fs::write(member.path().join(dir).join(name), body).unwrap();
+        }
+    }
+    fs::create_dir_all(member.path().join("grammar/src")).unwrap();
+    fs::write(member.path().join("grammar/src/lib.rs"), "pub fn g() {}\n").unwrap();
+    fs::write(member.path().join("grammar/corpus.ts"), "export {};\n").unwrap();
+
+    let inventory = inspect_repository(member.path(), &InventoryOptions::default()).unwrap();
+    let mut managed = entry("managed/tsconfig.base.json", "tsconfig.base.json");
+    managed.relative_to = RelativeTo::Project;
+    managed.when = Some(ProjectSelector {
+        language: None,
+        capability: None,
+        ecosystem: None,
+        ecosystems: vec![EcosystemId::from("npm"), EcosystemId::from("bun")],
+    });
+
+    let changes = plan_managed_changes(
+        "owner/member",
+        member.path(),
+        &inventory,
+        &resolved(fleet.path(), vec![managed]),
+    )
+    .unwrap();
+    let written = changes
+        .iter()
+        .map(|change| change.path.display().to_string())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(written.contains("site/tsconfig.base.json"), "{written:?}");
+    assert!(written.contains("tool/tsconfig.base.json"), "{written:?}");
+    assert!(
+        !written.iter().any(|path| path.starts_with("grammar/")),
+        "a Cargo crate carrying TypeScript is not a TypeScript package: {written:?}"
+    );
 }
