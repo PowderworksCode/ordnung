@@ -6,6 +6,8 @@
 // files arrive through this one.
 #[path = "checks/support.rs"]
 mod support;
+#[path = "checks/support_lint.rs"]
+mod support_lint;
 
 #[path = "checks/action_badge.rs"]
 mod action_badge;
@@ -91,3 +93,9 @@ mod typecheck;
 mod website;
 #[path = "checks/workflow_permissions.rs"]
 mod workflow_permissions;
+#[path = "checks/shellcheck.rs"]
+mod shellcheck;
+#[path = "checks/zizmor.rs"]
+mod zizmor;
+#[path = "checks/vale.rs"]
+mod vale;
