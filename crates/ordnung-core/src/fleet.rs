@@ -813,11 +813,20 @@ pub struct ManagedChange {
     pub managed: String,
     pub path: PathBuf,
     pub kind: ChangeKind,
+    /// Whether the source is executable. A Git hook that arrives without its
+    /// mode is a file Git will not run, which is indistinguishable from having
+    /// no hook at all — and reads as a passing repository doing no checking.
+    #[serde(skip)]
+    executable: bool,
     #[serde(skip)]
     content: Option<Vec<u8>>,
 }
 
 impl ManagedChange {
+    pub fn is_executable(&self) -> bool {
+        self.executable
+    }
+
     pub fn content(&self) -> Option<&[u8]> {
         self.content.as_deref()
     }
@@ -868,6 +877,7 @@ pub fn plan_managed_changes_for_member(
                                 managed: entry.name.clone(),
                                 path: relative_path(&member_root, &destination)?,
                                 kind: ChangeKind::Delete,
+                                executable: false,
                                 content: None,
                             },
                         )?;
@@ -952,7 +962,35 @@ pub fn apply_changes(member_root: &Path, changes: &[ManagedChange]) -> Result<()
             change.content.as_deref().expect("write change has content"),
         )
         .map_err(|source| Error::io(&path, source))?;
+        set_executable(&path, change.executable)?;
     }
+    Ok(())
+}
+
+/// Carries the source's executable bit onto the written file. A Git hook that
+/// arrives without it is a file Git silently declines to run, which looks
+/// exactly like a repository whose hooks all pass.
+#[cfg(unix)]
+pub(crate) fn set_executable(path: &Path, executable: bool) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let metadata = fs::metadata(path).map_err(|source| Error::io(path, source))?;
+    let mut permissions = metadata.permissions();
+    let mode = permissions.mode();
+    // Mirror the read bits: a file readable by its group is executable by it.
+    let wanted = if executable {
+        mode | ((mode & 0o444) >> 2)
+    } else {
+        mode & !0o111
+    };
+    if wanted != mode {
+        permissions.set_mode(wanted);
+        fs::set_permissions(path, permissions).map_err(|source| Error::io(path, source))?;
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+pub(crate) fn set_executable(_path: &Path, _executable: bool) -> Result<()> {
     Ok(())
 }
 
@@ -1056,8 +1094,9 @@ fn plan_file(
     if let Some(substitution) = substitution {
         content = substitution.apply(managed, source, content)?;
     }
+    let executable = is_executable(source);
     let current = fs::read(destination).ok();
-    if current.as_deref() == Some(content.as_slice()) {
+    if current.as_deref() == Some(content.as_slice()) && is_executable(destination) == executable {
         return Ok(());
     }
     insert_change(
@@ -1070,9 +1109,24 @@ fn plan_file(
             } else {
                 ChangeKind::Create
             },
+            executable,
             content: Some(content),
         },
     )
+}
+
+/// Whether the path is executable by its owner. Non-Unix hosts have no such
+/// bit; a hook shipped from one simply carries none, which is the honest
+/// answer rather than a guess.
+#[cfg(unix)]
+fn is_executable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    fs::metadata(path).is_ok_and(|meta| meta.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+fn is_executable(_path: &Path) -> bool {
+    false
 }
 
 fn plan_directory(
@@ -1093,6 +1147,7 @@ fn plan_directory(
                     managed: managed.into(),
                     path: relative_path(member_root, destination)?,
                     kind: ChangeKind::Delete,
+                    executable: false,
                     content: None,
                 },
             )?;
@@ -1100,9 +1155,9 @@ fn plan_directory(
         BTreeMap::new()
     };
 
-    for (relative, content) in &desired {
+    for (relative, (content, executable)) in &desired {
         let target = destination.join(relative);
-        if current.get(relative) == Some(content) {
+        if current.get(relative) == Some(&(content.clone(), *executable)) {
             continue;
         }
         insert_change(
@@ -1115,6 +1170,7 @@ fn plan_directory(
                 } else {
                     ChangeKind::Create
                 },
+                executable: *executable,
                 content: Some(content.clone()),
             },
         )?;
@@ -1127,6 +1183,7 @@ fn plan_directory(
                 managed: managed.into(),
                 path: relative_path(member_root, &destination.join(relative))?,
                 kind: ChangeKind::Delete,
+                executable: false,
                 content: None,
             },
         )?;
@@ -1134,7 +1191,9 @@ fn plan_directory(
     Ok(())
 }
 
-fn directory_files(root: &Path) -> Result<BTreeMap<PathBuf, Vec<u8>>> {
+/// Contents of a managed directory, paired with whether each file is
+/// executable — a hook that arrives without its bit is a hook Git ignores.
+fn directory_files(root: &Path) -> Result<BTreeMap<PathBuf, (Vec<u8>, bool)>> {
     let mut files = BTreeMap::new();
     collect_directory_files(root, root, &mut files)?;
     Ok(files)
@@ -1143,7 +1202,7 @@ fn directory_files(root: &Path) -> Result<BTreeMap<PathBuf, Vec<u8>>> {
 fn collect_directory_files(
     root: &Path,
     directory: &Path,
-    files: &mut BTreeMap<PathBuf, Vec<u8>>,
+    files: &mut BTreeMap<PathBuf, (Vec<u8>, bool)>,
 ) -> Result<()> {
     let entries = fs::read_dir(directory).map_err(|source| Error::io(directory, source))?;
     for entry in entries {
@@ -1165,7 +1224,10 @@ fn collect_directory_files(
                 path.strip_prefix(root)
                     .expect("directory descendant")
                     .to_path_buf(),
-                fs::read(&path).map_err(|source| Error::io(&path, source))?,
+                (
+                    fs::read(&path).map_err(|source| Error::io(&path, source))?,
+                    is_executable(&path),
+                ),
             );
         }
     }

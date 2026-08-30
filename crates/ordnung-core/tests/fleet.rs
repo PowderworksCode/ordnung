@@ -692,3 +692,47 @@ fn substituting_entry_takes_the_website_from_the_fleet() {
     .unwrap_err();
     assert!(error.to_string().contains("declares no website"), "{error}");
 }
+
+/// A managed hook arrives executable, or Git silently declines to run it —
+/// which looks exactly like a repository whose hooks all pass.
+#[test]
+fn managed_files_keep_the_executable_bit() {
+    use std::os::unix::fs::PermissionsExt;
+    let fleet = tempfile::tempdir().unwrap();
+    let member = tempfile::tempdir().unwrap();
+    fs::create_dir_all(fleet.path().join("managed/githooks")).unwrap();
+    let hook = fleet.path().join("managed/githooks/pre-commit");
+    fs::write(&hook, "#!/bin/sh\nexit 0\n").unwrap();
+    fs::set_permissions(&hook, fs::Permissions::from_mode(0o755)).unwrap();
+    fs::write(fleet.path().join("managed/githooks/README.md"), "# hooks\n").unwrap();
+    let inventory = inspect_repository(member.path(), &InventoryOptions::default()).unwrap();
+
+    let changes = plan_managed_changes(
+        "owner/member",
+        member.path(),
+        &inventory,
+        &resolved(fleet.path(), vec![entry("managed/githooks", ".githooks")]),
+    )
+    .unwrap();
+    apply_changes(member.path(), &changes).unwrap();
+
+    let written = member.path().join(".githooks/pre-commit");
+    let mode = fs::metadata(&written).unwrap().permissions().mode();
+    assert!(mode & 0o111 != 0, "hook is not executable: {mode:o}");
+    let prose = member.path().join(".githooks/README.md");
+    let prose_mode = fs::metadata(&prose).unwrap().permissions().mode();
+    assert!(
+        prose_mode & 0o111 == 0,
+        "prose became executable: {prose_mode:o}"
+    );
+
+    // Converged: the mode is part of what "already correct" means.
+    let clean = plan_managed_changes(
+        "owner/member",
+        member.path(),
+        &inventory,
+        &resolved(fleet.path(), vec![entry("managed/githooks", ".githooks")]),
+    )
+    .unwrap();
+    assert!(clean.is_empty(), "{clean:?}");
+}

@@ -40,7 +40,13 @@ readme-quality = { severity = "required", allow_override = true }
 repo-meta = { severity = "required", allow_override = false }
 reproducible-toolchain = { severity = "required", allow_override = false }
 required-checks = { severity = "required", allow_override = false }
-required-dependencies = { severity = "required", allow_override = true }
+# Reported, not gated. The libraries below are declared so automated
+# refactoring can rely on them, which is a real intent — but nothing in this
+# fleet imports any of them today, so requiring them means adding an unused
+# dependency to every crate and every site: compile time, audit surface, and a
+# lockfile entry, bought for a convenience nobody is currently spending.
+# Raise it to required in a fleet whose tooling actually reaches for them.
+required-dependencies = { severity = "recommended", allow_override = true }
 ruleset-bypass = { severity = "required", allow_override = false }
 scripts = { severity = "required", allow_override = true }
 secret-scanning = { severity = "required", allow_override = false }

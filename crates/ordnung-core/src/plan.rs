@@ -39,6 +39,10 @@ pub struct PlannedFileChange {
     pub path: PathBuf,
     pub operation: FileOperation,
     pub sources: Vec<FileChangeSource>,
+    /// Whether the file must end up executable. A Git hook written without its
+    /// mode is one Git silently declines to run.
+    #[serde(skip)]
+    executable: bool,
     #[serde(skip)]
     content: Option<Vec<u8>>,
 }
@@ -46,6 +50,10 @@ pub struct PlannedFileChange {
 impl PlannedFileChange {
     pub fn content(&self) -> Option<&[u8]> {
         self.content.as_deref()
+    }
+
+    pub fn is_executable(&self) -> bool {
+        self.executable
     }
 }
 
@@ -108,6 +116,7 @@ pub fn build_remediation_plan(
                 sources: vec![FileChangeSource::Check {
                     check: result.check.clone(),
                 }],
+                executable: false,
                 content: remediation.content().map(<[u8]>::to_vec),
             },
         )?;
@@ -121,6 +130,7 @@ pub fn build_remediation_plan(
                 sources: vec![FileChangeSource::Managed {
                     entry: change.managed.clone(),
                 }],
+                executable: change.is_executable(),
                 content: change.content().map(<[u8]>::to_vec),
             },
         )?;
@@ -169,6 +179,7 @@ pub fn apply_file_changes(repository_root: &Path, changes: &[PlannedFileChange])
             change.content.as_deref().expect("write change has content"),
         )
         .map_err(|source| Error::io(&path, source))?;
+        crate::fleet::set_executable(&path, change.executable)?;
     }
     Ok(())
 }
