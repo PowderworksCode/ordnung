@@ -83,7 +83,7 @@ changeable.
    Ordnung authored. Safest; needs commit provenance tracking.
 3. Leave as is.
 
-### A4. `--apply` conflates two very different blast radii
+### A4. `--apply` conflates two different blast radii
 
 **Today.** In `sync_fleet_member` (`main.rs:908–915`), a single `--apply` both
 calls `apply_setting_changes` — which mutates live repository settings
@@ -300,7 +300,7 @@ validation its doc comment promises, or delete the field.
 Checked because the brief asked, and clean:
 
 - **No half-built checks.** All 47 registered checks have a runner.
-- **No TODO/FIXME/`todo!()`/`unimplemented!()`** anywhere in `crates/`.
+- **No `TODO`/`FIXME`/`todo!()`/`unimplemented!()`** anywhere in `crates/`.
 - **No config keys parsed and ignored.** `resolve_policy` (`config.rs:560`)
   rejects unknown IDs, `[checks]` inside a fleet, `[overrides]` outside one,
   reasonless overrides, and overrides the fleet has not permitted.
