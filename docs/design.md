@@ -978,6 +978,27 @@ declaration. Opting out of an upstream entry must not silently delete files acro
 a fleet, which is why they cannot share one keyword. Declaring `unmanaged` for a
 name nothing inherited is an error, so a typo cannot quietly do nothing.
 
+Between taking an inherited entry whole and dropping it sits a third option.
+Reusing a name *without* a `source` refines the inherited entry rather than
+replacing it: the content, the layer it comes from, and its destination all stay
+put, and the reusing layer supplies only `only` and `when`.
+
+```toml
+[[managed]]
+# The tier's workflow, on public members alone.
+name = "fleet-lint-workflow"
+only = ["owner/one", "owner/two"]
+```
+
+This exists so that narrowing an entry's audience does not require copying the
+entry's content down a layer to say so. A copy would be a second thing to keep in
+step with the original, and the whole point of inheriting the entry was to avoid
+having one. A refinement that names a destination other than the inherited one is
+an error, as is a refinement of a name no layer declares, as is one that narrows
+nothing — an entry that reuses a name and supplies neither `only` nor `when` has
+almost certainly lost the list it meant to carry, and treating it as an override
+would quietly widen the file's audience to every member.
+
 Ownership is exclusive: exactly one entry owns a destination, which the planner
 relies on. Within a layer, overlapping destinations are an error. Across layers,
 reusing an entry's `name` replaces it, and that is the only sanctioned override.

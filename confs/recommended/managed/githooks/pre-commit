@@ -1,0 +1,30 @@
+#!/bin/sh
+# The local gate: what CI would say about this tree, said before the commit
+# lands. Bypass with `git commit --no-verify`.
+#
+# Distributed by Ordnung's `recommended` tier: edit it there, not here. A fleet
+# that runs other checks locally replaces this file by overriding the
+# `githooks-pre-commit` managed entry with its own.
+#
+# It fails when Ordnung is not installed rather than passing quietly: a hook
+# that skips its only check on the machines that lack the tool is a hook that
+# reports "clean" most loudly where it has looked least.
+set -eu
+
+if command -v ordnung >/dev/null 2>&1; then
+    exec ordnung check .
+fi
+
+# A local install that is not on PATH is still an install.
+for candidate in "$HOME/.local/bin/ordnung" "$HOME/.cargo/bin/ordnung"; do
+    if [ -x "$candidate" ]; then
+        exec "$candidate" check .
+    fi
+done
+
+echo "ordnung is not installed, and this hook will not pass without it." >&2
+echo "" >&2
+echo "  curl -fsSL https://ordnung.dev/install | sh" >&2
+echo "" >&2
+echo "Then re-run the commit. To skip the hooks once: git commit --no-verify" >&2
+exit 1

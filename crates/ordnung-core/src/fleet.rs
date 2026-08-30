@@ -331,7 +331,17 @@ fn validate_layer_managed(entries: &[ManagedEntry], root: &Path) -> Result<()> {
                     managed.name
                 )));
             }
-            validate_relative(&managed.destination, "managed destination")?;
+            let refines = managed.source.is_none() && managed.state == ManagedState::Present;
+            if managed.destination.as_os_str().is_empty() {
+                if !refines && managed.state != ManagedState::Unmanaged {
+                    return Err(Error::Config(format!(
+                        "managed entry {:?} has no destination",
+                        managed.name
+                    )));
+                }
+            } else {
+                validate_relative(&managed.destination, "managed destination")?;
+            }
             if managed.relative_to == RelativeTo::Project && managed.when.is_none() {
                 return Err(Error::Config(format!(
                     "project-relative managed entry {:?} requires a project selector",
@@ -343,11 +353,10 @@ fn validate_layer_managed(entries: &[ManagedEntry], root: &Path) -> Result<()> {
             }
             match managed.state {
                 ManagedState::Present => {
+                    // No source means a refinement of an inherited entry, whose
+                    // content this layer never names. Merging resolves it.
                     let Some(source) = &managed.source else {
-                        return Err(Error::Config(format!(
-                            "managed entry {:?} requires source when state is present",
-                            managed.name
-                        )));
+                        continue;
                     };
                     validate_relative(source, "managed source")?;
                     let source_path = root.join(source);
@@ -570,15 +579,65 @@ fn merge_managed(layers: &[Layer]) -> Result<Vec<ResolvedManaged>> {
                     )));
                 }
                 (_, Some(index)) => {
+                    // An override that names no source refines the inherited
+                    // entry rather than replacing it: the content, its layer
+                    // root, and where it lands all stay put, and only the
+                    // scope narrows. That is how a fleet says "this file, but
+                    // not on those members" without copying the file to say it.
+                    if entry.source.is_none() {
+                        let base = &merged[index];
+                        if !entry.destination.as_os_str().is_empty()
+                            && entry.destination != base.entry.destination
+                        {
+                            return Err(Error::Config(format!(
+                                "managed entry {:?} refines an inherited entry but moves it from {} to {}; \
+                                 give it a source to replace the entry outright, or drop the destination to inherit it",
+                                entry.name,
+                                base.entry.destination.display(),
+                                entry.destination.display(),
+                            )));
+                        }
+                        if entry.state == ManagedState::Present
+                            && entry.only.is_empty()
+                            && entry.when.is_none()
+                        {
+                            return Err(Error::Config(format!(
+                                "managed entry {:?} refines an inherited entry but narrows \
+                                 nothing; give it `only` or `when`, or a source to replace \
+                                 the entry outright",
+                                entry.name
+                            )));
+                        }
+                        let mut refined = base.entry.clone();
+                        refined.state = entry.state;
+                        refined.only = entry.only.clone();
+                        if entry.when.is_some() {
+                            refined.when = entry.when.clone();
+                        }
+                        merged[index] = ResolvedManaged {
+                            root: base.root.clone(),
+                            entry: refined,
+                        };
+                        continue;
+                    }
                     merged[index] = ResolvedManaged {
                         root: layer.root.clone(),
                         entry: entry.clone(),
                     };
                 }
-                (_, None) => merged.push(ResolvedManaged {
-                    root: layer.root.clone(),
-                    entry: entry.clone(),
-                }),
+                (_, None) => {
+                    if entry.source.is_none() && entry.destination.as_os_str().is_empty() {
+                        return Err(Error::Config(format!(
+                            "managed entry {:?} gives neither a source nor a destination, and \
+                             refines no inherited entry of that name",
+                            entry.name
+                        )));
+                    }
+                    merged.push(ResolvedManaged {
+                        root: layer.root.clone(),
+                        entry: entry.clone(),
+                    });
+                }
             }
         }
     }
@@ -698,6 +757,10 @@ pub struct StagePolicy {
 pub struct ManagedEntry {
     pub name: String,
     pub source: Option<PathBuf>,
+    /// Where the content lands in a member repository. Omitted only by a
+    /// refinement — an entry that reuses an inherited name and gives no
+    /// `source` — which inherits the destination along with the content.
+    #[serde(default)]
     pub destination: PathBuf,
     #[serde(default)]
     pub state: ManagedState,

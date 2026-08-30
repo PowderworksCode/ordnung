@@ -110,3 +110,59 @@ conventional-commits = { severity = "off", allow_override = true }
 # Team process without a team.
 codeowners = { severity = "off", allow_override = true }
 stale = { severity = "off", allow_override = true }
+
+# ---------------------------------------------------------------------------
+# Content
+#
+# A tier that raises a check and then leaves every adopter to invent the file
+# that satisfies it has done half a job. These entries ship the other half: the
+# configuration a repository would otherwise write from scratch to pass the
+# checks above. Ordnung distributes them to members on `fleet sync`.
+#
+# A fleet that wants its own version of any of these overrides the entry by
+# name in its own fleet.toml — the last layer to declare a name wins — or drops
+# it with `state = "unmanaged"`.
+
+[[managed]]
+name = "githooks-commit-msg"
+source = "managed/githooks/commit-msg"
+destination = ".githooks/commit-msg"
+relative_to = "repo"
+
+[[managed]]
+name = "githooks-pre-commit"
+source = "managed/githooks/pre-commit"
+destination = ".githooks/pre-commit"
+relative_to = "repo"
+
+[[managed]]
+name = "githooks-readme"
+source = "managed/githooks/README.md"
+destination = ".githooks/README.md"
+relative_to = "repo"
+
+[[managed]]
+name = "dependabot"
+source = "managed/github/dependabot.yml"
+destination = ".github/dependabot.yml"
+relative_to = "repo"
+
+[[managed]]
+name = "fleet-lint-workflow"
+source = "managed/github/lint.yml"
+destination = ".github/workflows/fleet-lint.yml"
+relative_to = "repo"
+
+[[managed]]
+name = "typescript-tsconfig-base"
+source = "managed/typescript/tsconfig.base.json"
+destination = "tsconfig.base.json"
+relative_to = "project"
+when = { language = "typescript" }
+
+[[managed]]
+name = "typescript-biome-base"
+source = "managed/typescript/biome.base.json"
+destination = "biome.base.json"
+relative_to = "project"
+when = { language = "typescript" }

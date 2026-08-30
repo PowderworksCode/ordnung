@@ -61,6 +61,20 @@ path = "confs/paranoid"
 Each tier extends the one below, so a file states the difference between tiers
 rather than the whole check list.
 
+The tiers carry content as well as severities. A tier that turns a check on and
+leaves every adopter to write the file that satisfies it has done half a job, so
+`recommended` ships the Git hooks, the Dependabot configuration, the TypeScript
+bases, and a codespell workflow, and `paranoid` adds the Vale and Stylelint
+configuration and replaces that workflow with one running every linter it
+mandates. Extending a tier distributes those files to members on the next
+`fleet sync`.
+
+None of it is compulsory. A fleet that wants its own version of a file reuses the
+entry's `name` with its own `source`; a fleet that wants none of it says
+`state = "unmanaged"`; a fleet that wants the file on some members only reuses the
+name with an `only` list and no source. What each tier ships is listed in its own
+`policy.toml`.
+
 Revisions are pinned deliberately: an inherited layer can write files into every
 member repository, so a moving reference would make plans non-deterministic.
 

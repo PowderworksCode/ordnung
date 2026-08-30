@@ -307,6 +307,150 @@ fn unmanaged_drops_an_inherited_entry_without_deleting_files() {
 }
 
 #[test]
+fn a_sourceless_override_narrows_an_inherited_entry_without_copying_it() {
+    let upstream = tempfile::tempdir().unwrap();
+    let up = config_dir(
+        upstream.path(),
+        &[
+            ("managed/editorconfig", "root = true\n"),
+            (
+                "policy.toml",
+                "name = \"base\"\n\n\
+                 [[managed]]\nname = \"editorconfig\"\nsource = \"managed/editorconfig\"\ndestination = \".editorconfig\"\n",
+            ),
+        ],
+    );
+
+    let fleet = tempfile::tempdir().unwrap();
+    let down = config_dir(
+        fleet.path(),
+        &[(
+            "fleet.toml",
+            &format!(
+                "{MEMBER}\n[[extends]]\npath = {:?}\n\n\
+                 [[managed]]\nname = \"editorconfig\"\nonly = [\"owner/repo\"]\n",
+                up.to_str().unwrap()
+            ),
+        )],
+    );
+
+    let config = FleetConfig::load(&down.join("fleet.toml")).unwrap();
+    let managed = config.effective_managed();
+    assert_eq!(managed.len(), 1);
+    // The content still comes from the layer that declared it.
+    assert!(managed[0].root.ends_with(up.file_name().unwrap()));
+    assert_eq!(
+        managed[0].entry.source.as_deref(),
+        Some(Path::new("managed/editorconfig"))
+    );
+    assert_eq!(managed[0].entry.destination, Path::new(".editorconfig"));
+    assert_eq!(managed[0].entry.only, vec!["owner/repo".to_string()]);
+
+    // The named member still receives the upstream bytes.
+    let member = tempfile::tempdir().unwrap();
+    let inventory = inspect_repository(member.path(), &InventoryOptions::default()).unwrap();
+    let changes = plan_managed_changes("owner/repo", member.path(), &inventory, managed).unwrap();
+    assert_eq!(changes.len(), 1);
+    assert_eq!(changes[0].path, Path::new(".editorconfig"));
+
+    // A member outside the narrowed list receives nothing.
+    let other = tempfile::tempdir().unwrap();
+    let inventory = inspect_repository(other.path(), &InventoryOptions::default()).unwrap();
+    assert!(
+        plan_managed_changes("owner/other", other.path(), &inventory, managed)
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+fn a_refinement_may_not_move_the_entry_it_refines() {
+    let upstream = tempfile::tempdir().unwrap();
+    let up = config_dir(
+        upstream.path(),
+        &[
+            ("managed/editorconfig", "root = true\n"),
+            (
+                "policy.toml",
+                "name = \"base\"\n\n\
+                 [[managed]]\nname = \"editorconfig\"\nsource = \"managed/editorconfig\"\ndestination = \".editorconfig\"\n",
+            ),
+        ],
+    );
+
+    let fleet = tempfile::tempdir().unwrap();
+    let down = config_dir(
+        fleet.path(),
+        &[(
+            "fleet.toml",
+            &format!(
+                "{MEMBER}\n[[extends]]\npath = {:?}\n\n\
+                 [[managed]]\nname = \"editorconfig\"\ndestination = \"elsewhere\"\n",
+                up.to_str().unwrap()
+            ),
+        )],
+    );
+
+    let error = FleetConfig::load(&down.join("fleet.toml"))
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("moves it from"), "{error}");
+}
+
+#[test]
+fn a_refinement_that_narrows_nothing_is_rejected() {
+    let upstream = tempfile::tempdir().unwrap();
+    let up = config_dir(
+        upstream.path(),
+        &[
+            ("managed/editorconfig", "root = true\n"),
+            (
+                "policy.toml",
+                "name = \"base\"\n\n\
+                 [[managed]]\nname = \"editorconfig\"\nsource = \"managed/editorconfig\"\ndestination = \".editorconfig\"\n",
+            ),
+        ],
+    );
+
+    let fleet = tempfile::tempdir().unwrap();
+    let down = config_dir(
+        fleet.path(),
+        &[(
+            "fleet.toml",
+            &format!(
+                "{MEMBER}\n[[extends]]\npath = {:?}\n\n\
+                 [[managed]]\nname = \"editorconfig\"\n",
+                up.to_str().unwrap()
+            ),
+        )],
+    );
+
+    // Silence here would mean a dropped `only` list distributes a file to every
+    // member, which is the failure this rejection exists to catch.
+    let error = FleetConfig::load(&down.join("fleet.toml"))
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("narrows nothing"), "{error}");
+}
+
+#[test]
+fn a_refinement_of_nothing_is_rejected() {
+    let fleet = tempfile::tempdir().unwrap();
+    let dir = config_dir(
+        fleet.path(),
+        &[(
+            "fleet.toml",
+            &format!("{MEMBER}\n[[managed]]\nname = \"typo\"\nonly = [\"owner/repo\"]\n"),
+        )],
+    );
+
+    let error = FleetConfig::load(&dir.join("fleet.toml"))
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("refines no inherited entry"), "{error}");
+}
+
+#[test]
 fn unmanaged_without_an_inherited_entry_is_rejected() {
     let fleet = tempfile::tempdir().unwrap();
     let dir = config_dir(
