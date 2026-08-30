@@ -25,7 +25,7 @@ full commit history are public.
 everything in order, all is well, nothing out of place. *Ordnung muss sein*:
 there must be order. The tagline translates the name the way a certain song
 would — everything in its right place — and that is the state Ordnung holds a
-repository to: not that the code is good, but that everything around it is
+repository to: not that the code is good, but that everything around it sits
 where it belongs.
 
 ## Newsletter

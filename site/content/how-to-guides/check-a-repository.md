@@ -1,10 +1,10 @@
 ---
 title: How to check an existing repository
-description: Evaluate a repository locally, run the full GitHub-backed audit, and hand findings to another tool.
+description: Check a repository locally, run the full GitHub-backed audit, and hand findings to another tool.
 order: 1
 ---
 
-Use this guide when Ordnung is installed and you want to evaluate a repository you already have.
+Use this guide when Ordnung is on your PATH and you want to check a repository you already have.
 
 ## Check from the repository root
 

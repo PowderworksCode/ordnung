@@ -4,7 +4,7 @@ description: Every configuration layer, key, and override mechanism, from a sing
 order: 3
 ---
 
-Configuration is optional. Ordnung's built-in defaults are meant to be useful
+Configuration is optional. Ordnung's built-in defaults aim to be useful
 against a repository with no configuration file at all.
 
 ## Repository-level configuration
