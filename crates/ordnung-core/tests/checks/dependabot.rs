@@ -121,3 +121,29 @@ fn dependabot_requires_github_actions_at_the_root() {
             .any(|result| { result.check == "dependabot" && result.status == CheckStatus::Pass })
     );
 }
+
+#[test]
+fn dependabot_reports_disabled_and_unavailable_security_settings() {
+    let mut repository = facts();
+    repository.vulnerability_alerts = GithubValue::known(false);
+    repository.automated_security_fixes = GithubValue::unavailable("HTTP 403");
+
+    let report = run_github_checks(&repository);
+    let dependabot = report
+        .results
+        .iter()
+        .find(|result| result.check == "dependabot")
+        .unwrap();
+    assert_eq!(dependabot.status, CheckStatus::Fail);
+    assert!(dependabot.message.contains("vulnerability alerts"));
+    assert!(dependabot.message.contains("HTTP 403"));
+
+    repository.vulnerability_alerts = GithubValue::known(true);
+    let report = run_github_checks(&repository);
+    let dependabot = report
+        .results
+        .iter()
+        .find(|result| result.check == "dependabot")
+        .unwrap();
+    assert_eq!(dependabot.status, CheckStatus::Skip);
+}

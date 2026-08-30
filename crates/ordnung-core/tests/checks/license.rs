@@ -40,3 +40,38 @@ fn license_requires_an_approved_root_filename() {
         .unwrap();
     assert_eq!(preferred.scope, std::path::Path::new("LICENSE.md"));
 }
+
+#[test]
+fn license_reports_github_classification_without_requiring_it() {
+    let mut repository = facts();
+    let report = run_github_checks(&repository);
+    let license = report
+        .results
+        .iter()
+        .find(|result| result.check == "license")
+        .unwrap();
+    assert_eq!(license.status, CheckStatus::Pass);
+    assert!(license.message.contains("MIT"));
+
+    repository.license = Some(GithubLicenseFacts {
+        key: "other".into(),
+        name: "Other".into(),
+        spdx_id: "NOASSERTION".into(),
+    });
+    let report = run_github_checks(&repository);
+    let unclassified = report
+        .results
+        .iter()
+        .find(|result| result.check == "license")
+        .unwrap();
+    assert_eq!(unclassified.status, CheckStatus::Skip);
+
+    repository.license = None;
+    let report = run_github_checks(&repository);
+    let missing = report
+        .results
+        .iter()
+        .find(|result| result.check == "license")
+        .unwrap();
+    assert_eq!(missing.status, CheckStatus::Skip);
+}
