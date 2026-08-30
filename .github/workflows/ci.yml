@@ -97,6 +97,13 @@ jobs:
       #
       # ORDNUNG_BIN reuses the binary the previous step installed, which skips a
       # second build and covers the escape hatch the Action documents.
+      # A fixture with a known hole, rather than this repository: pointing the
+      # drift case at `.` asserted that Ordnung fails its own checks, which
+      # stopped being true the day it stopped failing them. A test that breaks
+      # when the subject improves is testing the wrong thing.
+      - name: Break the fixture
+        run: rm -f "${RUNNER_TEMP}/fixture/README.md"
+
       - id: drift
         uses: ./
         continue-on-error: true
@@ -104,10 +111,33 @@ jobs:
           ORDNUNG_BIN: ${{ runner.temp }}/ordnung-action/bin/ordnung
         with:
           mode: check
-          path: .
+          path: ${{ runner.temp }}/fixture
 
       - name: The Action reports drift as drift
         run: |
           set -euo pipefail
           test "${{ steps.drift.outputs.outcome }}" = drift
           test "${{ steps.drift.outputs.exit-code }}" = 1
+
+  # The site is a Bun package with its own type layer, linter and tests, so it
+  # is graded the way the workspace is rather than only at deploy time. Named
+  # steps rather than a loop: ordnung reads a workflow's steps to know which
+  # tasks a language actually runs, and a loop tells it nothing.
+  site:
+    name: site
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.0"
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run format
+      - run: bun run build
+      - run: bun run test

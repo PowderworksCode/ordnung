@@ -18,32 +18,51 @@ const SITE_NAME = "Ordnung";
 const out = mkdtempSync(join(tmpdir(), "straitjacket-titles-"));
 afterAll(() => rmSync(out, { recursive: true, force: true }));
 
-const script = JSON.parse(readFileSync(join(SITE, "package.json"), "utf8")).scripts.build;
+const script = JSON.parse(readFileSync(join(SITE, "package.json"), "utf8"))
+  .scripts.build;
 const run = Bun.spawnSync(
-  ["sh", "-c", script.replace("rm -rf out && ", "").replace("--out out", `--out '${out}'`)],
+  [
+    "sh",
+    "-c",
+    script.replace("rm -rf out && ", "").replace("--out out", `--out '${out}'`),
+  ],
   {
     cwd: SITE,
-    env: { ...process.env, PATH: `${join(SITE, "node_modules", ".bin")}:${process.env.PATH}` },
+    env: {
+      ...process.env,
+      PATH: `${join(SITE, "node_modules", ".bin")}:${process.env.PATH}`,
+    },
   },
 );
 
-function tabTitlesByEmittedUrl(dir, trail = []) {
-  const found = new Map();
+function tabTitlesByEmittedUrl(
+  dir: string,
+  trail: string[] = [],
+): Map<string, string> {
+  const found = new Map<string, string>();
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
-      for (const [url, value] of tabTitlesByEmittedUrl(join(dir, entry.name), [...trail, entry.name]))
+      for (const [url, value] of tabTitlesByEmittedUrl(join(dir, entry.name), [
+        ...trail,
+        entry.name,
+      ]))
         found.set(url, value);
     } else if (entry.name.endsWith(".md")) {
       const slug = entry.name.slice(0, -3);
-      const declared = /^tab-title:\s*(.+)$/m.exec(readFileSync(join(dir, entry.name), "utf8"));
+      const declared = /^tab-title:\s*(.+)$/m.exec(
+        readFileSync(join(dir, entry.name), "utf8"),
+      )?.[1];
       if (declared)
-        found.set("/" + [...trail, ...(slug === "index" ? [] : [slug])].join("/"), declared[1].trim());
+        found.set(
+          `/${[...trail, ...(slug === "index" ? [] : [slug])].join("/")}`,
+          declared.trim(),
+        );
     }
   }
   return found;
 }
 
-function markdownFiles(dir) {
+function markdownFiles(dir: string): number {
   return readdirSync(dir, { withFileTypes: true }).reduce(
     (count, entry) =>
       count +
@@ -54,18 +73,28 @@ function markdownFiles(dir) {
   );
 }
 
-function pages(dir, trail = []) {
-  const found = [];
+type Page = { url: string; file: string };
+
+function pages(dir: string, trail: string[] = []): Page[] {
+  const found: Page[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) found.push(...pages(join(dir, entry.name), [...trail, entry.name]));
-    else if (entry.name === "index.html") found.push({ url: "/" + trail.join("/"), file: join(dir, entry.name) });
+    if (entry.isDirectory())
+      found.push(...pages(join(dir, entry.name), [...trail, entry.name]));
+    else if (entry.name === "index.html")
+      found.push({ url: `/${trail.join("/")}`, file: join(dir, entry.name) });
   }
   return found;
 }
 
-const registry: any = await import(
-  join(SITE, "node_modules", "powderworks-docs", "powderworks.toml")
-);
+// The registry is a TOML file the generator ships; only the per-site table is
+// read here, and the `default` hop covers whichever way the import wraps it.
+type SiteRegistry = {
+  site?: Record<string, Record<string, string> | undefined>;
+};
+
+const registry = (await import(
+  join(SITE, "node_modules", "@powderworks", "docs", "powderworks.toml")
+)) as SiteRegistry & { default?: SiteRegistry };
 const named = /--site (\S+)/.exec(script)?.[1];
 const shared = (registry.default ?? registry).site?.[named ?? ""] ?? {};
 
@@ -87,27 +116,37 @@ describe("rendered titles", () => {
     const inside = built.flatMap(({ url, file }) =>
       [...readFileSync(file, "utf8").matchAll(/<(pre|code)\b[\s\S]*?<\/\1>/g)]
         .filter((block) => block[0].includes('class="wordmark'))
-        .map(() => url));
+        .map(() => url),
+    );
     expect(inside).toEqual([]);
   });
 
   test("the site's own name is set in its own face", () => {
     const html = built.map(({ file }) => readFileSync(file, "utf8")).join("");
-    expect(new RegExp(`class="wordmark[^"]*">${SITE_NAME}<`).test(html)).toBe(true);
+    expect(new RegExp(`class="wordmark[^"]*">${SITE_NAME}<`).test(html)).toBe(
+      true,
+    );
   });
 
-  for (const { url, file } of built.sort((a, b) => a.url.localeCompare(b.url))) {
+  for (const { url, file } of built.sort((a, b) =>
+    a.url.localeCompare(b.url),
+  )) {
     test(`${url} names itself in the tab`, () => {
       const html = readFileSync(file, "utf8");
       const title = /<title>([\s\S]*?)<\/title>/.exec(html)?.[1] ?? "";
-      const heading = (/<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html)?.[1] ?? "").replace(/<[^>]*>/g, "");
+      const heading = (
+        /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html)?.[1] ?? ""
+      ).replace(/<[^>]*>/g, "");
 
       expect(title).not.toBe("");
       expect(title).not.toContain("undefined");
       expect(heading).not.toBe("");
 
-      if (overrides.has(url)) {
-        expect(title).toBe(overrides.get(url));
+      // Read once: has() does not narrow what get() returns, and the tab a
+      // page asked for is the thing being asserted either way.
+      const declared = overrides.get(url);
+      if (declared !== undefined) {
+        expect(title).toBe(declared);
         return;
       }
       const [name, ...rest] = title.split(" — ");

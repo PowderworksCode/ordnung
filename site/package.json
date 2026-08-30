@@ -4,16 +4,22 @@
   "private": true,
   "scripts": {
     "build": "cp ../scripts/install.sh public/install && rm -rf out && powderworks-docs build content --out out --site ordnung --static public",
-    "social": "python3 node_modules/powderworks-docs/tools/social-card.py --site ordnung",
-    "social:check": "python3 node_modules/powderworks-docs/tools/social-card.py --site ordnung --check",
+    "social": "python3 node_modules/@powderworks/docs/tools/social-card.py --site ordnung",
+    "social:check": "python3 node_modules/@powderworks/docs/tools/social-card.py --site ordnung --check",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome format .",
     "test": "bun test"
   },
   "dependencies": {
-    "powderworks-docs": "github:PowderworksCode/docs"
+    "@powderworks/docs": "0.2.4"
   },
   "devDependencies": {
-    "wrangler": "^4.123.0"
+    "@biomejs/biome": "2.5.11",
+    "@types/bun": "1.4.0",
+    "typescript": "5.9.3",
+    "wrangler": "4.127.1"
   }
 }

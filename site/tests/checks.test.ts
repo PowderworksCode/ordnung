@@ -62,19 +62,20 @@ function claimedCheckIds(text: string): Map<string, string> {
   };
 
   for (const block of text.matchAll(/```[a-z]*\n([\s\S]*?)```/g)) {
-    const body = block[1];
+    const body = block[1] ?? "";
     let inCheckTable = false;
     for (const line of body.split("\n")) {
-      const section = /^\s*\[{1,2}([a-z_-]+)\]{1,2}\s*$/.exec(line);
-      if (section) inCheckTable = ["checks", "overrides"].includes(section[1]);
+      const section = /^\s*\[{1,2}([a-z_-]+)\]{1,2}\s*$/.exec(line)?.[1];
+      if (section) inCheckTable = ["checks", "overrides"].includes(section);
       else if (inCheckTable) {
-        const assignment = /^\s*([a-z][a-z0-9-]*)\s*=/.exec(line);
-        if (assignment) add(assignment[1], `config assignment ${assignment[1]}`);
+        const assignment = /^\s*([a-z][a-z0-9-]*)\s*=/.exec(line)?.[1];
+        if (assignment) add(assignment, `config assignment ${assignment}`);
       }
-      const output = /^(?:pass|fail|skip|error)\s+(?:required|recommended|off)\s+([a-z][a-z0-9-]*)\s/.exec(
-        line,
-      );
-      if (output) add(output[1], `sample output ${output[1]}`);
+      const output =
+        /^(?:pass|fail|skip|error)\s+(?:required|recommended|off)\s+([a-z][a-z0-9-]*)\s/.exec(
+          line,
+        )?.[1];
+      if (output) add(output, `sample output ${output}`);
     }
   }
 
@@ -136,9 +137,8 @@ describe("every check is documented", () => {
     for (const hit of reference.matchAll(
       /^\| `([a-z][a-z0-9-]*)` \|[^|]+\| (?:repository|project) \|/gm,
     )) {
-      expect(liveIds.has(hit[1]), `${hit[1]} is not an Ordnung check`).toBe(
-        true,
-      );
+      const id = hit[1] ?? "";
+      expect(liveIds.has(id), `${id} is not an Ordnung check`).toBe(true);
     }
   });
 });
