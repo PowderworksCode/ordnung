@@ -15,7 +15,10 @@ fn fails_without_a_root_config() {
 #[test]
 fn fails_when_the_declared_styles_path_is_missing() {
     let repo = repo_with(&[
-        (".vale.ini", "StylesPath = .vale/styles\nMinAlertLevel = error\n"),
+        (
+            ".vale.ini",
+            "StylesPath = .vale/styles\nMinAlertLevel = error\n",
+        ),
         CI,
     ]);
     assert_eq!(status(repo.path(), "vale"), CheckStatus::Fail);
@@ -24,10 +27,7 @@ fn fails_when_the_declared_styles_path_is_missing() {
 /// A path that climbs out of the repository is refused rather than followed.
 #[test]
 fn fails_when_the_styles_path_escapes_the_repository() {
-    let repo = repo_with(&[
-        (".vale.ini", "StylesPath = ../elsewhere\n"),
-        CI,
-    ]);
+    let repo = repo_with(&[(".vale.ini", "StylesPath = ../elsewhere\n"), CI]);
     assert_eq!(status(repo.path(), "vale"), CheckStatus::Fail);
 }
 

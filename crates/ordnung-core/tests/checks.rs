@@ -15,6 +15,8 @@ mod action_badge;
 mod allow_auto_merge;
 #[path = "checks/artifacts_built.rs"]
 mod artifacts_built;
+#[path = "checks/auto_update_pr_branches.rs"]
+mod auto_update_pr_branches;
 #[path = "checks/branch_protection.rs"]
 mod branch_protection;
 #[path = "checks/builds.rs"]
@@ -31,6 +33,8 @@ mod ci_green;
 mod ci_job_timeout;
 #[path = "checks/ci_matrix_scoped.rs"]
 mod ci_matrix_scoped;
+#[path = "checks/ci_scheduled_run.rs"]
+mod ci_scheduled_run;
 #[path = "checks/ci_scoped.rs"]
 mod ci_scoped;
 #[path = "checks/codegen_drift.rs"]
@@ -57,10 +61,14 @@ mod license;
 mod lockfiles;
 #[path = "checks/pinned_actions.rs"]
 mod pinned_actions;
+#[path = "checks/pinned_dependencies.rs"]
+mod pinned_dependencies;
 #[path = "checks/readme.rs"]
 mod readme;
 #[path = "checks/readme_quality.rs"]
 mod readme_quality;
+#[path = "checks/repo_meta.rs"]
+mod repo_meta;
 #[path = "checks/reproducible_toolchain.rs"]
 mod reproducible_toolchain;
 #[path = "checks/required_checks.rs"]
@@ -71,6 +79,10 @@ mod required_dependencies;
 mod ruleset_bypass;
 #[path = "checks/scripts.rs"]
 mod scripts;
+#[path = "checks/secret_scanning.rs"]
+mod secret_scanning;
+#[path = "checks/shellcheck.rs"]
+mod shellcheck;
 #[path = "checks/stale.rs"]
 mod stale;
 #[path = "checks/stray_files.rs"]
@@ -79,6 +91,8 @@ mod stray_files;
 mod strict_status_checks;
 #[path = "checks/stylelint.rs"]
 mod stylelint;
+#[path = "checks/support_github.rs"]
+mod support_github;
 #[path = "checks/test_inline.rs"]
 mod test_inline;
 #[path = "checks/test_layout.rs"]
@@ -89,13 +103,11 @@ mod test_mirror;
 mod test_retry_masking;
 #[path = "checks/typecheck.rs"]
 mod typecheck;
+#[path = "checks/vale.rs"]
+mod vale;
 #[path = "checks/website.rs"]
 mod website;
 #[path = "checks/workflow_permissions.rs"]
 mod workflow_permissions;
-#[path = "checks/shellcheck.rs"]
-mod shellcheck;
 #[path = "checks/zizmor.rs"]
 mod zizmor;
-#[path = "checks/vale.rs"]
-mod vale;
