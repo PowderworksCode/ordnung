@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "cp ../scripts/install.sh public/install && rm -rf out && powderworks-docs build content --out out --site ordnung --static public",
+    "build": "cp ../scripts/install.sh public/install && rm -rf out && powderworks-docs build content --out out --site ordnung --static public --var 'open={{'",
     "social": "python3 node_modules/@powderworks/docs/tools/social-card.py --site ordnung",
     "social:check": "python3 node_modules/@powderworks/docs/tools/social-card.py --site ordnung --check",
     "deploy": "wrangler deploy",
@@ -14,7 +14,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@powderworks/docs": "0.2.4"
+    "@powderworks/docs": "0.3.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",

@@ -16,7 +16,7 @@ the authority if this page and your installed version ever disagree.
 ## How to read the tables
 
 **Severity** is the default the built-in policy assigns; any layer of
-[configuration](/reference/cli) may raise, lower, or switch a check off.
+[configuration](/reference/configuration) may raise, lower, or switch a check off.
 
 | severity | meaning |
 | --- | --- |
