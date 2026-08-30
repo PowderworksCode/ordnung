@@ -7,6 +7,8 @@ It does not read your code. It reads what surrounds it: manifests, lockfiles,
 workflows, `.gitignore`, README, CODEOWNERS, Dependabot config, branch
 protection, and the layout those live in.
 
+Documentation lives at [ordnung.dev](https://ordnung.dev).
+
 ## The problem it solves
 
 Every repository accumulates the same small structural debts: a lockfile never
@@ -76,10 +78,11 @@ Two things are worth knowing before your first run:
   enforce — one test file per source file, a `.vale.ini`, git hooks. They still
   run, so raising one to `required` needs no other change, but go unreported
   unless you pass `--all`.
-- **`ordnung check` runs 33 of Ordnung's 47 checks.** The other 14 read GitHub
-  state — branch protection, secret scanning, workflow permissions — and need an
-  API call. Four are `required`, so a clean `check` is not a clean repository —
-  the run ends with a note saying so. `repo-check` runs the full set.
+- **`ordnung check` is not the full audit.** A dozen-plus checks read GitHub
+  state — branch protection, secret scanning, workflow permissions — and need
+  an API call; several are `required`, so a clean `check` is not a clean
+  repository — the run ends with a note counting what it skipped. `repo-check`
+  runs the full set.
 
 ## Install
 
@@ -132,12 +135,14 @@ into a marker-delimited region of the files you name, leaving the rest alone.
 Outputs `outcome` (`clean`, `drift`, `error`) and `exit-code`. Pinned to a
 release tag it downloads that release's binary and verifies its checksum;
 otherwise it builds from source, which takes minutes. See
-[docs/action.md](docs/action.md) for inputs, outputs, and binary resolution.
+[the Action reference](https://ordnung.dev/reference/action) for inputs,
+outputs, and binary resolution.
 
 ### Across a fleet
 
 A fleet manifest names member repositories and the policy they share; see
-[docs/configuration.md](docs/configuration.md) for layer resolution.
+[the configuration reference](https://ordnung.dev/reference/configuration)
+for layer resolution.
 
 ```sh
 ordnung fleet check fleet.toml                 # validate manifest
@@ -175,8 +180,8 @@ settings live in `.ordnung/overrides.toml`, and Ordnung ships three policy tiers
 under [`confs/`](confs) — built-in defaults, `recommended`, `paranoid` — each
 inherited through the same `[[extends]]` mechanism third parties use.
 
-See [docs/configuration.md](docs/configuration.md) for the resolution order, the
-exception mechanism, and every available key.
+See [the configuration reference](https://ordnung.dev/reference/configuration)
+for the resolution order, the exception mechanism, and every available key.
 
 ## How it works
 
@@ -206,18 +211,18 @@ straitjacket. Running both is normal.
 
 ## Documentation
 
-[docs/design.md](docs/design.md) is the complete architecture contract;
-user-visible changes are in [CHANGELOG.md](CHANGELOG.md).
-
-The documentation site is a static Fumadocs application under `site/`, consuming
-`@thepowderworks/fumadocs` from the sibling `../docs` repository:
+The user-facing documentation lives at [ordnung.dev](https://ordnung.dev),
+generated from the Markdown under [`site/content/`](site/content) by
+[`@powderworks/docs`](https://github.com/PowderworksCode/docs) and served as a
+Cloudflare Worker:
 
 ```sh
-(cd ../docs && bun install && bun run build)
-(cd site && bun install && bun run dev)
+cd site && bun install && bun test
 ```
 
-Each page declares a Diátaxis `mode`; `bun run docs:check` runs before a build.
+The tests build the site and hold every page to the binary's own check
+manifest. [docs/design.md](docs/design.md) is the complete architecture
+contract; user-visible changes are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
