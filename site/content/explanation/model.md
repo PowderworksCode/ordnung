@@ -1,6 +1,7 @@
 ---
 title: The Ordnung model
 description: Why Ordnung separates observed facts, desired policy, findings, and mutation.
+order: 1
 ---
 
 Ordnung is built around a boundary: observing a repository is different from deciding what it

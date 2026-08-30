@@ -1,10 +1,36 @@
 <p class="cover"><img src="/cover.png" alt="A tidy house, in order" width="220"></p>
 
-Ordnung determines whether a GitHub repository is structurally in order. It
-inventories a repository once, resolves the policy that applies, and reports
-deterministic findings. Mutation is always a separate, explicit operation.
+Ordnung checks that a GitHub repository is structurally in order. It never
+reads your code — it reads what surrounds it: manifests, lockfiles, workflows,
+branch protection, CODEOWNERS, Dependabot configuration, and the layout those
+live in.
 
-[Get started](/getting-started) · [How-to guides](/how-to-guides) · [Browse the checks](/reference/checks) · [The model](/explanation/model) · [GitHub](https://github.com/PowderworksCode/ordnung)
+```console
+$ ordnung check .
+fail  required    ci-exists              .github/workflows: no GitHub Actions workflows found
+fail  required    dependabot             .github/dependabot.yml: no .github/dependabot.yml or .github/dependabot.yaml found
+pass  required    gitignore              target: Cargo ignores target/ at .
+fail  recommended license                LICENSE: no root license file found
+fail  required    lockfiles              .: Cargo package has no Cargo.lock at its lockfile owner .
+pass  required    project-inventory      .: detected 1 project boundary/boundaries
+…
+27 results (10 hidden, see --all): 6 pass, 11 fail, 10 skip — 4 required failures (exit 1)
+```
 
-Checking is read-only. File and GitHub-setting mutations require an explicit
-apply operation, after the complete plan has been displayed.
+None of these findings breaks anything today, and none is what a code reviewer
+looks at — each is invisible until it matters. Ordnung makes the state
+checkable: [51 checks](/reference/checks), each with a stable identifier, gate
+CI on one repository, and across many, a
+[fleet](/how-to-guides/set-up-a-fleet) keeps shared configuration synchronized
+from one place, as reviewable pull requests.
+
+Checking is read-only. Every write shows its complete plan first and requires
+an explicit `--apply`.
+
+Install with a stable Rust toolchain:
+
+```sh
+cargo install --git https://github.com/PowderworksCode/ordnung ordnung-cli --locked
+```
+
+[Get started](/getting-started) · [Browse the checks](/reference/checks)

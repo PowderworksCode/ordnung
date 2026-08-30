@@ -1,0 +1,16 @@
+# Ordnung's own departures from the policy it ships.
+
+[scripts]
+# `confs/` holds the policy tiers, and a tier's managed files are content
+# written for other repositories to receive — among them the Git hooks, which
+# are shell. They are not this repository's scripts, and collecting them under
+# `scripts/` would put them somewhere the tier cannot distribute them from.
+ignore_directories = [
+  "node_modules",
+  "vendor",
+  "target",
+  "dist",
+  "build",
+  "__pycache__",
+  "confs",
+]
