@@ -23,6 +23,8 @@ mod branch_protection;
 mod builds;
 #[path = "checks/changelog.rs"]
 mod changelog;
+#[path = "checks/mod.rs"]
+mod checks_mod;
 #[path = "checks/ci_continue_on_error.rs"]
 mod ci_continue_on_error;
 #[path = "checks/ci_exists.rs"]
@@ -63,6 +65,8 @@ mod lockfiles;
 mod pinned_actions;
 #[path = "checks/pinned_dependencies.rs"]
 mod pinned_dependencies;
+#[path = "checks/project_inventory.rs"]
+mod project_inventory;
 #[path = "checks/readme.rs"]
 mod readme;
 #[path = "checks/readme_quality.rs"]
