@@ -164,5 +164,5 @@ Notable changes to Ordnung are recorded here, newest first.
   ruleset bypass checks.
 - Completed the check roadmap with typed dependency pins, Marketplace Action
   links, guarded Dependabot auto-merge, and stale pull-request and branch facts.
-- Moved TODO collection out of Ordnung while retaining notes and root-file
+- Moved to-do collection out of Ordnung while retaining notes and root-file
   corralling.
