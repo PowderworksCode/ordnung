@@ -10,6 +10,7 @@
     "comment-empty-line-before": null,
     "selector-class-pattern": null,
     "no-descending-specificity": null,
+    "no-duplicate-selectors": null,
     "custom-property-empty-line-before": null,
     "value-keyword-case": [
       "lower",
