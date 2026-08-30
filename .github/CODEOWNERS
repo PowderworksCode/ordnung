@@ -1,0 +1,4 @@
+# Every path, one owner. Ordnung is a single-maintainer repository, so this
+# states that rather than inventing teams that do not exist; GitHub uses it to
+# request review automatically.
+*  @zmaril
