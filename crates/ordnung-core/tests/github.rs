@@ -5,14 +5,11 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::LazyLock;
 
-use ordnung_core::Severity;
 use ordnung_core::{
-    CheckStatus, DependabotAutomergeWorkflowFacts, GithubActionPublicationFacts,
-    GithubActionsPermissionsFacts, GithubBranchFacts, GithubBranchProtectionFacts,
-    GithubDefaultWorkflowPermissions, GithubLicenseFacts, GithubPullRequestAgeFacts,
-    GithubRepositoryFacts, GithubRulesetBypassActor, GithubRulesetFacts, GithubSecurityFacts,
-    GithubSetting, GithubSettings, GithubStaleFacts, GithubValue, GithubWorkflowFacts,
-    GithubWorkflowRun, plan_github_settings, run_github_checks, run_github_checks_with_settings,
+    CheckStatus, GithubActionsPermissionsFacts, GithubBranchFacts, GithubBranchProtectionFacts,
+    GithubDefaultWorkflowPermissions, GithubLicenseFacts, GithubRepositoryFacts,
+    GithubSecurityFacts, GithubSetting, GithubSettings, GithubStaleFacts, GithubValue,
+    GithubWorkflowFacts, GithubWorkflowRun, plan_github_settings, run_github_checks,
 };
 
 static WEBSITE_SERVER: LazyLock<String> = LazyLock::new(|| {

@@ -12,10 +12,10 @@ pub use ordnung_core::{
     GithubActionPublicationFacts, GithubActionsPermissionsFacts, GithubBranchFacts,
     GithubBranchProtectionFacts, GithubDefaultWorkflowPermissions, GithubLicenseFacts,
     GithubPullRequestAgeFacts, GithubRepositoryFacts, GithubRulesetBypassActor, GithubRulesetFacts,
-    GithubSecurityFacts, GithubSetting, GithubSettings, GithubStaleFacts, GithubValue,
-    GithubWorkflowFacts, GithubWorkflowRun, InventoryOptions, LanguageTestLayout, RepoConfig,
-    Severity, TestLayoutConfig, default_policy, inspect_repository, plan_github_settings,
-    run_github_checks, run_github_checks_with_settings, run_repository_checks_with_config,
+    GithubSecurityFacts, GithubSettings, GithubStaleFacts, GithubValue, GithubWorkflowFacts,
+    GithubWorkflowRun, InventoryOptions, LanguageTestLayout, RepoConfig, Severity,
+    TestLayoutConfig, default_policy, inspect_repository, run_github_checks,
+    run_github_checks_with_settings, run_repository_checks_with_config,
     run_repository_checks_with_repo_config, run_repository_checks_with_requirements,
 };
 
