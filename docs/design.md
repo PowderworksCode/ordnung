@@ -53,7 +53,7 @@ It must not require policy logic to move out of `ordnung-core`.
 ordnung/
   crates/
     ordnung-core/
-      src/inventory.rs  compatibility facade over Entl inventories
+      src/inventory.rs  compatibility façade over Entl inventories
       src/profile.rs  re-exported Entl profile API
       src/            config, plans, and registries
       src/checks/     one module per check
@@ -239,7 +239,7 @@ The reusable discovery API returns an Entl `CodebaseInventory`; it does not
 depend on Ordnung configuration or repository policy facts. `entl-github`
 derives a `GithubInventory` from that completed inventory without walking the
 tree again. It also supplies the typed remote repository facts populated by
-Ordnung's `gh` adapter. Ordnung keeps a small compatibility facade containing
+Ordnung's `gh` adapter. Ordnung keeps a small compatibility façade containing
 the local models, while settings policy and mutation planning remain in
 `ordnung-core`.
 Workspace paths are normalized to forward-slash form before glob matching so
@@ -728,7 +728,7 @@ not prescribe release headings, versions, dates, or entry format.
 
 `stray-files` checks root Markdown and text files only. Conventional community
 files and exact `stray_files.allow` entries are accepted; working notes belong
-under `stray_files.notes`. TODO collection belongs to a dedicated external tool.
+under `stray_files.notes`. `TODO` collection belongs to a dedicated external tool.
 
 ## Prose Tooling
 
