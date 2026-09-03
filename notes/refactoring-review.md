@@ -307,7 +307,7 @@ there are many checks, not because it is tangled. Every check ID but
 
 Worth recording, because their absence is a quality signal:
 
-- **No TODO, FIXME, XXX, `todo!()`, or `unimplemented!()` anywhere** in
+- **No `TODO`, `FIXME`, `XXX`, `todo!()`, or `unimplemented!()` anywhere** in
   `crates/`.
 - **No registered-but-dead checks.**
 - **No config keys parsed and then ignored.** `resolve_policy`
