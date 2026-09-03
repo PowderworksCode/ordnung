@@ -4,6 +4,12 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- The `vale` check accepts a StylesPath the configuration fetches. Styles named
+  under `Packages` are downloaded by `vale sync` at run time, so the directory
+  is absent from a clean checkout by design; requiring it there asked every
+  repository to commit somebody else's style rules or fail a required check for
+  declining to. It was failing on all eleven members.
+
 - The fleet's prose job runs Vale directly instead of through an action driving
   reviewdog. That reporter turned every finding into a pull-request annotation
   and failed the job when GitHub capped them at fifty, so a repository failed on
