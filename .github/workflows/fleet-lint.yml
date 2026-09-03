@@ -125,10 +125,29 @@ jobs:
   # Prose style, over the Markdown a member writes. Vale fetches the packages
   # named in .vale.ini at run time, so the styles are versioned by that file
   # rather than committed here.
+  # Prose style, over the Markdown a member writes. Vale fetches the packages
+  # named in .vale.ini at run time, so the styles are versioned by that file
+  # rather than committed here.
+  #
+  # Run directly rather than through errata-ai/vale-action, which drives
+  # reviewdog underneath. That reporter posts findings as pull-request
+  # annotations, and it brought two behaviours nobody chose: GitHub caps
+  # annotations, so a repository with enough findings failed on
+  # "reported too many annotation" rather than on its prose; and the reporter
+  # filters to the lines a diff touches, so the same tree passed every pull
+  # request and failed on main, where there is no diff to filter to.
+  #
+  # Vale's own exit code is the gate instead: zero unless something reaches the
+  # level .vale.ini reports at. The cost is that findings land in the job log
+  # rather than beside the line, which is the trade for a check that says the
+  # same thing on a push as it does on a pull request.
   prose-style:
     name: vale
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      VALE_VERSION: "3.20.0"
+      VALE_SHA256: "f59e7030c5d4ace6cf915497d0d076a1699d61e876142765963237e6867c9712"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Asked after checkout, never as a job-level `if: hashFiles(...)`: that
@@ -143,10 +162,31 @@ jobs:
             echo "vale=false" >> "$GITHUB_OUTPUT"
             echo "no .vale.ini; prose style is not graded here"
           fi
-      - uses: errata-ai/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # v3.0.0
+      # Pinned and checksummed: the release is fetched over the network on every
+      # run, and a version that moves under us would change what the gate means
+      # without anyone editing it.
+      - name: Install Vale
         if: steps.configured.outputs.vale == 'true'
-        with:
-          fail_on_error: true
+        run: |
+          archive="vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL -o "$archive" \
+            "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/${archive}"
+          echo "${VALE_SHA256}  ${archive}" | sha256sum --check --status
+          tar -xzf "$archive" vale
+          sudo install -m 0755 vale /usr/local/bin/vale
+          rm -f "$archive" vale
+      - name: Prose style
+        if: steps.configured.outputs.vale == 'true'
+        run: |
+          vale sync
+          files=$(git ls-files '*.md')
+          if [ -z "$files" ]; then
+            echo "no tracked Markdown to grade"
+            exit 0
+          fi
+          # The file list is deliberately split into arguments.
+          # shellcheck disable=SC2086
+          vale $files
 
   # Stylesheets, for the members that configure them. Run through bunx rather
   # than a dependency, so a repository that writes CSS is not made to declare a
@@ -185,7 +225,8 @@ jobs:
           # writes CSS still does not declare a linter it never imports.
           tools=$(mktemp -d)
           (cd "$tools" && bun add --silent stylelint@17.14.1 stylelint-config-standard@40.0.0)
-          # shellcheck disable=SC2086 — the file list is deliberately split.
+          # The file list is deliberately split into arguments.
+          # shellcheck disable=SC2086
           "$tools/node_modules/.bin/stylelint" \
             --config .stylelintrc.json --config-basedir "$tools" $sheets
 
