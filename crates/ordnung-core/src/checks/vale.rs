@@ -62,11 +62,12 @@ fn run(
             ));
             return;
         }
-        if !context
-            .inventory
-            .files
-            .iter()
-            .any(|candidate| candidate == path || candidate.starts_with(path))
+        if !declares_packages(&text)
+            && !context
+                .inventory
+                .files
+                .iter()
+                .any(|candidate| candidate == path || candidate.starts_with(path))
         {
             results.push(result(
                 definition,
@@ -100,6 +101,24 @@ fn run(
             ".vale.ini is present but no push or pull-request workflow runs Vale"
         },
     ));
+}
+
+/// Whether the configuration has Vale fetch its styles rather than carry them.
+///
+/// Styles named under `Packages` are downloaded into StylesPath by `vale sync`
+/// at run time, so that directory is absent from a clean checkout by design and
+/// its absence says nothing about the configuration. Requiring it there asks
+/// every repository to commit somebody else's style rules, or to fail a
+/// required check for declining to.
+fn declares_packages(text: &str) -> bool {
+    text.lines()
+        .map(str::trim)
+        .take_while(|line| !line.starts_with('['))
+        .any(|line| {
+            line.split_once('=').is_some_and(|(key, value)| {
+                key.trim().eq_ignore_ascii_case("Packages") && !value.trim().is_empty()
+            })
+        })
 }
 
 fn styles_path(text: &str) -> Option<String> {

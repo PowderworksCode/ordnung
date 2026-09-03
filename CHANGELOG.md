@@ -4,6 +4,21 @@ Notable changes to Ordnung are recorded here, newest first.
 
 ## Unreleased
 
+- The `vale` check accepts a StylesPath the configuration fetches. Styles named
+  under `Packages` are downloaded by `vale sync` at run time, so the directory
+  is absent from a clean checkout by design; requiring it there asked every
+  repository to commit somebody else's style rules or fail a required check for
+  declining to. It was failing on all eleven members.
+
+- The fleet's prose job runs Vale directly instead of through an action driving
+  reviewdog. That reporter turned every finding into a pull-request annotation
+  and failed the job when GitHub capped them at fifty, so a repository failed on
+  "reported too many annotation" rather than on its prose; and it filtered to the
+  lines a diff touches, so the same tree passed every pull request and failed on
+  main, where there is no diff to filter to. Vale's own exit code is the gate
+  now, which answers to errors alone and says the same thing on a push as on a
+  pull request.
+
 - The shipped policy tiers distribute content, not only severities. Turning a
   check on and leaving every adopter to invent the file that satisfies it is
   half a job, so `recommended` ships the Git hooks, the Dependabot
