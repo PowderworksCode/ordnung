@@ -1,3 +1,8 @@
+// Tests for `src/profile.rs`: the language and ecosystem profiles.
+//
+// Registration lives in profile_registration.rs and stays a target of its
+// own: it submits a fixture profile to the inventory registry, which every
+// test in the same binary would then see.
 use std::collections::BTreeSet;
 use std::path::Path;
 
