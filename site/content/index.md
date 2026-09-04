@@ -27,10 +27,10 @@ from one place, as reviewable pull requests.
 Checking is read-only. Every write shows its complete plan first and requires
 an explicit `--apply`.
 
-Install with a stable Rust toolchain:
+Install the prebuilt binary — Linux x86_64/aarch64, macOS arm64/x86_64:
 
 ```sh
-cargo install --git https://github.com/PowderworksCode/ordnung ordnung-cli --locked
+curl -fsSL https://ordnung.dev/install | sh
 ```
 
 [Get started](/getting-started) · [Browse the checks](/reference/checks)

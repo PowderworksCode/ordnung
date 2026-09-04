@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use entl_codebase::CODESPELL;
+use entl::codebase::CODESPELL;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

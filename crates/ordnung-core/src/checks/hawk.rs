@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use entl_codebase::HAWK;
+use entl::codebase::HAWK;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

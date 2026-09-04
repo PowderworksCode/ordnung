@@ -5,10 +5,14 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "The checks, policy resolution, and change planning behind the ordnung CLI."
+homepage = "https://ordnung.dev"
+readme = "../../README.md"
+keywords = ["ci", "repository", "policy", "github", "lint"]
+categories = ["development-tools"]
 
 [dependencies]
-entl-codebase.workspace = true
-entl-github.workspace = true
+entl.workspace = true
 globset.workspace = true
 ignore.workspace = true
 profile-inventory.workspace = true

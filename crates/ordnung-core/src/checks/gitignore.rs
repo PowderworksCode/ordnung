@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use entl_codebase::CARGO_ECOSYSTEM;
+use entl::codebase::CARGO_ECOSYSTEM;
 use ignore::gitignore::GitignoreBuilder;
 
 use crate::check::{

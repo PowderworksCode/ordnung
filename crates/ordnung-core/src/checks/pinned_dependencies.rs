@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use entl_codebase::{DependencyKind, DependencyPinStatus};
+use entl::codebase::{DependencyKind, DependencyPinStatus};
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

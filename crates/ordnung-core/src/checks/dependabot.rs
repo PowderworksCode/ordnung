@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use entl_github::{DependabotEcosystemProfile, DependabotUpdate, dependabot_ecosystem_profile};
+use entl::github::{DependabotEcosystemProfile, DependabotUpdate, dependabot_ecosystem_profile};
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

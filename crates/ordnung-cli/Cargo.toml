@@ -5,6 +5,12 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Checks that a GitHub repository is structurally in order — CI, lockfiles, Dependabot, branch protection and the layout around your code — and keeps shared configuration synchronized across a fleet."
+homepage = "https://ordnung.dev"
+documentation = "https://ordnung.dev"
+readme = "../../README.md"
+keywords = ["ci", "repository", "policy", "github", "lint"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "ordnung"
@@ -14,8 +20,8 @@ path = "src/main.rs"
 anyhow.workspace = true
 base64.workspace = true
 clap.workspace = true
-entl-github.workspace = true
-ordnung-core = { path = "../ordnung-core" }
+entl.workspace = true
+ordnung-core = { path = "../ordnung-core", version = "0.1.0" }
 serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true

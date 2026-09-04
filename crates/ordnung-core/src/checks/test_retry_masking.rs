@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
-use entl_codebase::{TestRetrySignal, tool_profile, tool_profiles};
+use entl::codebase::{TestRetrySignal, tool_profile, tool_profiles};
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

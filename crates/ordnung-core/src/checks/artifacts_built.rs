@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use entl_codebase::{Artifact, TAURI_ARTIFACT, artifact_profile};
-use entl_github::{TaskInvocation, Workflow};
+use entl::codebase::{Artifact, TAURI_ARTIFACT, artifact_profile};
+use entl::github::{TaskInvocation, Workflow};
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

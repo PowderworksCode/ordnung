@@ -59,9 +59,11 @@ Every failure in step 2 is recoverable and reports why on stderr, so pinning to
 a branch or SHA, running on a platform with no published binary, or hitting a
 missing asset all degrade to a source build rather than failing.
 
-Published platforms are `x86_64-unknown-linux-gnu`, `x86_64-apple-darwin`, and
-`aarch64-apple-darwin`. `aarch64-unknown-linux-gnu` is not published — it needs
-either a cross linker or an ARM runner — so it builds from source.
+Published platforms are `x86_64-unknown-linux-musl`,
+`aarch64-unknown-linux-musl`, `x86_64-apple-darwin`, and `aarch64-apple-darwin`.
+Anything else builds from source. These names must match the release archives
+exactly: a triple that names no asset does not fail, it silently builds from
+source on every run.
 
 ## Releasing
 

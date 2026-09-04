@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use entl_codebase::{
+use entl::codebase::{
     EcosystemRole, JAVASCRIPT_LANGUAGE, STYLELINT, TYPESCRIPT_LANGUAGE, ToolProfile,
 };
 

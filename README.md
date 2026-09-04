@@ -1,5 +1,11 @@
 # ordnung
 
+<p align="center">
+  <a href="https://crates.io/crates/ordnung-cli"><img src="https://img.shields.io/crates/v/ordnung-cli.svg" alt="ordnung-cli on crates.io"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT licensed"></a>
+  <a href="https://ordnung.dev"><img src="https://img.shields.io/badge/docs-ordnung.dev-informational" alt="Documentation at ordnung.dev"></a>
+</p>
+
 Ordnung checks that a repository is *structurally* in order — and, across many
 repositories, keeps shared configuration synchronized from one place.
 
@@ -86,20 +92,25 @@ Two things are worth knowing before your first run:
 
 ## Install
 
-Builds with stable Rust; no system dependencies beyond `git`.
+Grab the prebuilt binary (Linux x86_64/aarch64, macOS arm64/x86_64):
 
 ```sh
-cargo install --git https://github.com/PowderworksCode/ordnung ordnung-cli --locked
+curl -fsSL https://ordnung.dev/install | sh
 ```
 
-From a clone:
+It verifies the download against the release checksums and installs to
+`~/.local/bin`. Re-run it to update; it installs over the copy that is there.
+
+Or build from source with `cargo install ordnung-cli`. Stable Rust, no system
+dependencies beyond `git`. From a clone:
 
 ```sh
 git clone https://github.com/PowderworksCode/ordnung
 cd ordnung && cargo install --path crates/ordnung-cli --locked
 ```
 
-The binary is named `ordnung`. Not on crates.io — that name is taken.
+**The crate is `ordnung-cli`; the binary it installs is `ordnung`.** The short
+name on crates.io belongs to an unrelated 2020 crate.
 
 **Anything touching GitHub also needs the [`gh` CLI](https://cli.github.com/)
 installed and authenticated** (`gh auth login`) — Ordnung shells out to `gh api`

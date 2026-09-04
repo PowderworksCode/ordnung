@@ -4,6 +4,41 @@ description: Commands, arguments, and options for the Ordnung command-line appli
 order: 1
 ---
 
+## Installing
+
+```sh
+curl -fsSL https://ordnung.dev/install | sh
+```
+
+The installer resolves the latest release, verifies the archive against its
+published `SHA256SUMS`, and installs to `~/.local/bin`. Four environment
+variables steer it:
+
+| variable | meaning |
+| --- | --- |
+| `ORDNUNG_VERSION` | version to install, such as `v0.1.0`; defaults to the latest release |
+| `ORDNUNG_INSTALL_DIR` | where to put the binary; defaults to `~/.local/bin` |
+| `ORDNUNG_BASE_URL` | where to fetch release assets from, instead of the GitHub release |
+| `GITHUB_TOKEN` | used for the API call and download, for a private repository |
+
+Prebuilt archives are published for `x86_64-unknown-linux-musl`,
+`aarch64-unknown-linux-musl`, `x86_64-apple-darwin`, and
+`aarch64-apple-darwin`. Anywhere else, build from source:
+
+```sh
+cargo install ordnung-cli
+```
+
+The crate is named `ordnung-cli` and the binary it installs is `ordnung`; the
+short name on crates.io belongs to an unrelated 2020 crate.
+
+Commands that read GitHub state — `repo-check`, everything under `github` and
+most of `fleet` — also need the [`gh` CLI](https://cli.github.com/) installed
+and authenticated, because Ordnung shells out to `gh api` rather than handling
+tokens itself. `ORDNUNG_GH` selects a different binary.
+
+## Commands
+
 Ordnung uses the following top-level command structure:
 
 ```text

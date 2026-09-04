@@ -35,10 +35,13 @@ jobs:
 ```
 
 Reference third-party Actions — this one included — by full commit SHA, with the tag as a
-comment; Ordnung's own `pinned-actions` check requires exactly that. Pinned to a release tag
-instead, the Action downloads that release's binary and verifies its checksum; a branch or SHA
-ref builds from source with `cargo install --locked`, which takes minutes. Until the first binary
-release ships, every ref builds from source.
+comment; Ordnung's own `pinned-actions` check requires exactly that.
+
+There is a trade-off in that pin. The Action downloads a released binary only when its own ref is
+a release tag, because only a tag identifies a published release; a branch or SHA ref builds from
+source with `cargo install --locked`, which takes minutes per job. So a SHA pin costs build time,
+and a tag pin costs the SHA guarantee. Pin the SHA and accept the build, or pin the tag and accept
+that a tag can move.
 
 The Action passes its `github-token` input to `gh` as `GH_TOKEN`. Use `mode: check` only when a
 local-only audit is intentional.

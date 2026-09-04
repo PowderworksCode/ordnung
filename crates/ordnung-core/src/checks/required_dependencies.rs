@@ -129,9 +129,9 @@ fn is_workspace_aggregate(package: &crate::inventory::PackageInstance) -> bool {
 }
 
 fn declares(
-    dependencies: &[entl_codebase::Dependency],
+    dependencies: &[entl::codebase::Dependency],
     wanted: &str,
-    kind: Option<entl_codebase::DependencyKind>,
+    kind: Option<entl::codebase::DependencyKind>,
 ) -> bool {
     dependencies.iter().any(|dependency| {
         dependency.package_name() == wanted && kind.is_none_or(|kind| dependency.kind == kind)

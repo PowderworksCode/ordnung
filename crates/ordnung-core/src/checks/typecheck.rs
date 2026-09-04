@@ -1,4 +1,4 @@
-use entl_codebase::{TaskKind, language_conventions};
+use entl::codebase::{TaskKind, language_conventions};
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

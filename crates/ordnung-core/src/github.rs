@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::config::GithubSettings;
-pub use entl_github::{
+pub use entl::github::{
     DependabotAutomergeWorkflowFacts, GithubActionPublicationFacts, GithubActionsPermissionsFacts,
     GithubBranchFacts, GithubBranchProtectionFacts, GithubDefaultWorkflowPermissions,
     GithubLicenseFacts, GithubPullRequestAgeFacts, GithubRepositoryFacts, GithubRulesetBypassActor,

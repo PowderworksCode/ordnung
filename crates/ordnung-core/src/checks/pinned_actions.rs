@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use entl_github::ActionPinStatus;
+use entl::github::ActionPinStatus;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

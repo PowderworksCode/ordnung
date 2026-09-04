@@ -497,13 +497,13 @@ impl<R: GhRunner> GhClient<R> {
                 match self.api(&content_endpoint, "application/vnd.github.raw+json") {
                     Ok(bytes) => match String::from_utf8(bytes) {
                         Ok(text) => {
-                            match entl_github::pull_request_check_jobs(&text) {
+                            match entl::github::pull_request_check_jobs(&text) {
                                 Ok(checks) => pull_request_checks.extend(checks),
                                 Err(error) => {
                                     check_errors.push(format!("{}: {error}", workflow.path))
                                 }
                             }
-                            match entl_github::inspect_dependabot_automerge_workflow(&text) {
+                            match entl::github::inspect_dependabot_automerge_workflow(&text) {
                                 Ok(facts) => dependabot_automerge = facts,
                                 Err(error) => {
                                     check_errors.push(format!("{}: {error}", workflow.path))
@@ -590,7 +590,7 @@ impl<R: GhRunner> GhClient<R> {
             Ok(None) => None,
             Err(error) => return GithubValue::unavailable(format!("{error:#}")),
         };
-        match entl_github::inspect_action_publication(
+        match entl::github::inspect_action_publication(
             manifest_path,
             &manifest,
             readme.as_ref().map(|_| PathBuf::from("README")),

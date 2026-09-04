@@ -204,9 +204,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
 
 [[package]]
-name = "entl-codebase"
-version = "0.0.0"
-source = "git+https://github.com/PowderworksCode/entl?rev=8464e5f8a313c3e211c10782b07d2ba88f590d3e#8464e5f8a313c3e211c10782b07d2ba88f590d3e"
+name = "entl"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "424976c090cf1e6e04e6450044c43831d0dd9bc7e2fc576e8d8feddb0f8cd1f6"
 dependencies = [
  "globset",
  "ignore",
@@ -214,20 +215,9 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
+ "shell-words",
  "thiserror",
  "toml",
-]
-
-[[package]]
-name = "entl-github"
-version = "0.0.0"
-source = "git+https://github.com/PowderworksCode/entl?rev=8464e5f8a313c3e211c10782b07d2ba88f590d3e#8464e5f8a313c3e211c10782b07d2ba88f590d3e"
-dependencies = [
- "entl-codebase",
- "inventory",
- "serde",
- "serde_yaml_ng",
- "shell-words",
 ]
 
 [[package]]
@@ -436,12 +426,12 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "ordnung-cli"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
  "clap",
- "entl-github",
+ "entl",
  "libc",
  "ordnung-core",
  "serde",
@@ -451,10 +441,9 @@ dependencies = [
 
 [[package]]
 name = "ordnung-core"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
- "entl-codebase",
- "entl-github",
+ "entl",
  "globset",
  "ignore",
  "inventory",

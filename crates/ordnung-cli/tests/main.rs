@@ -794,6 +794,11 @@ exit 0
     assert_eq!(cargo_log, "built\n", "and it built from source instead");
 }
 
+/// The triple `action.sh` will ask for on this machine. It is spelled out again
+/// here rather than read from the script, so a mismatch between the two is a
+/// failing test rather than a silent fallback to a source build -- which is
+/// exactly the bug this pairing exists to catch. Keep it in step with
+/// `detect_target` there, and with the release workflow's matrix.
 #[cfg(unix)]
 fn current_release_target() -> String {
     let os = std::process::Command::new("uname")
@@ -807,8 +812,8 @@ fn current_release_target() -> String {
     let os = String::from_utf8_lossy(&os.stdout).trim().to_owned();
     let arch = String::from_utf8_lossy(&arch.stdout).trim().to_owned();
     match (os.as_str(), arch.as_str()) {
-        ("Linux", "x86_64") => "x86_64-unknown-linux-gnu".into(),
-        ("Linux", _) => "aarch64-unknown-linux-gnu".into(),
+        ("Linux", "x86_64") => "x86_64-unknown-linux-musl".into(),
+        ("Linux", _) => "aarch64-unknown-linux-musl".into(),
         ("Darwin", "x86_64") => "x86_64-apple-darwin".into(),
         _ => "aarch64-apple-darwin".into(),
     }

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use entl_codebase::SHELLCHECK;
+use entl::codebase::SHELLCHECK;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,

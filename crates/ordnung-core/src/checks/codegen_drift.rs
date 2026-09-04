@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use entl_github::WorkflowCommand;
+use entl::github::WorkflowCommand;
 
 use crate::check::{
     CheckCategory, CheckDefinition, CheckRegistration, CheckResult, CheckScope, CheckStatus,
